@@ -89,6 +89,10 @@
       user-select: none;
       font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     }
+    input, textarea, select {
+      user-select: text !important;
+      -webkit-user-select: text !important;
+    }
     .safe-bottom {
       padding-bottom: max(1.2rem, env(safe-area-inset-bottom));
     }
@@ -101,7 +105,7 @@
       border-radius: 4px;
     }
     .tap-scale {
-      transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: transform 0.12s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .tap-scale:active {
       transform: scale(0.97);
@@ -112,6 +116,9 @@
     .hide-scrollbar {
       -ms-overflow-style: none;
       scrollbar-width: none;
+    }
+    .chart-bar-glow:hover {
+      filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.5));
     }
   </style>
 </head>
@@ -286,7 +293,7 @@
         <div>
           <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">Módulo Dinâmico</span>
           <h2 class="text-base font-bold text-white mt-1.5">Rastreador de Hábitos</h2>
-          <p class="text-xs text-slate-400">Metas diárias, contadores rápidos e histórico com gráficos.</p>
+          <p class="text-xs text-slate-400">Metas diárias, gráficos detalhados, horários e gatilhos.</p>
         </div>
         <button onclick="NexusApp.habits.openNewModal()" class="tap-scale px-3 py-2 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-cyan-600/20">
           <i data-lucide="plus" class="w-4 h-4"></i>
@@ -339,7 +346,7 @@
       <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 flex justify-between items-center">
         <div>
           <h2 class="text-base font-bold text-white">Acompanhamento de Cursos</h2>
-          <p class="text-xs text-slate-400">Aulas assistidas, progresso e notas por módulo.</p>
+          <p class="text-xs text-slate-400">Progresso detalhado, carga horária, links e notas estruturadas.</p>
         </div>
         <button onclick="NexusApp.courses.openAddModal()" class="tap-scale px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20">
           <i data-lucide="plus" class="w-4 h-4"></i>
@@ -355,7 +362,7 @@
       <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 flex justify-between items-center">
         <div>
           <h2 class="text-base font-bold text-white">Organização de Viagens</h2>
-          <p class="text-xs text-slate-400">Itinerários diários, gastos categorizados e rateio.</p>
+          <p class="text-xs text-slate-400">Exibição dedicada: itinerário, finanças e rateio da viagem ativa.</p>
         </div>
         <button onclick="NexusApp.trips.openAddModal()" class="tap-scale px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-amber-600/20">
           <i data-lucide="plus" class="w-4 h-4"></i>
@@ -363,9 +370,16 @@
         </button>
       </div>
 
-      <div class="bg-surface-100 border border-surface-border rounded-2xl p-3">
-        <label class="block text-xs font-semibold text-slate-400 mb-1">Selecione a Viagem Ativa</label>
-        <select id="activeTripSelector" onchange="NexusApp.trips.selectTrip(this.value)" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"></select>
+      <!-- Seletor de Viagem Compacto -->
+      <div class="flex items-center gap-2 bg-surface-100 border border-surface-border rounded-2xl p-3">
+        <i data-lucide="map-pin" class="w-4 h-4 text-amber-400 shrink-0"></i>
+        <div class="flex-1">
+          <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Viagem em Foco</label>
+          <select id="activeTripSelector" onchange="NexusApp.trips.selectTrip(this.value)" class="w-full bg-surface-200 border border-surface-border rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500 font-semibold"></select>
+        </div>
+        <button onclick="NexusApp.trips.removeActiveTrip()" title="Excluir Viagem Selecionada" class="p-2 rounded-xl bg-surface-200 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-surface-border">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
       </div>
 
       <div id="selectedTripDetails" class="space-y-4"></div>
@@ -651,64 +665,95 @@
               <option value="modal:course">Abrir +Novo Curso</option>
               <option value="tab:trips">Ir para Viagens</option>
               <option value="modal:trip">Abrir +Nova Viagem</option>
-              <option value="tab:calculators">Ir para Calculadoras</option>
-              <option value="habit:first">Incrementar 1º Hábito (+1)</option>
+              <option value="tab:calculators">Ir para Cálculos</option>
+              <option value="habit:first">+1 no 1º Hábito</option>
             </select>
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 mb-1">Ícone</label>
             <select id="qaIconType" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
               <option value="zap">Raio (Zap)</option>
-              <option value="plus-circle">Mais (+)</option>
-              <option value="target">Alvo</option>
               <option value="graduation-cap">Formatura</option>
               <option value="plane">Avião</option>
-              <option value="scale">Balança (OAB)</option>
-              <option value="piggy-bank">Cofrinho</option>
+              <option value="scale">Balança OAB</option>
+              <option value="car">Carro / KM</option>
+              <option value="piggy-bank">Caixinha</option>
+              <option value="activity">Atividade</option>
             </select>
           </div>
         </div>
-        <button onclick="NexusApp.quickActions.addNew()" class="tap-scale w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold">
-          Adicionar Novo Botão de 1 Toque
+        <button onclick="NexusApp.quickActions.addNew()" class="tap-scale w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-md shadow-brand-600/20">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+          <span>Adicionar Atalho</span>
         </button>
       </div>
 
-      <!-- Lista Atual de Ações Rápidas -->
-      <div>
-        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Botões Atuais</label>
+      <div class="border-t border-surface-border pt-3">
+        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Atalhos Existentes</label>
         <div id="quickActionsManageList" class="space-y-1.5 max-h-44 overflow-y-auto custom-scrollbar"></div>
       </div>
     </div>
   </div>
 
-  <!-- Modal Novo / Editar Hábito Personalizável -->
+  <!-- Modal Novo / Editar Hábito Personalizável Completo -->
   <div id="newHabitModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="bg-surface-100 border border-surface-border w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+    <div class="bg-surface-100 border border-surface-border w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
       <div class="flex justify-between items-center pb-2 border-b border-surface-border">
-        <h3 class="text-sm font-bold text-white" id="habitModalTitle">Cadastrar Novo Hábito</h3>
+        <div>
+          <h3 class="text-sm font-bold text-white">Cadastrar Hábito Completo</h3>
+          <p class="text-[11px] text-slate-400">Configure métricas, horários e estratégias de execução.</p>
+        </div>
         <button onclick="NexusApp.habits.closeNewModal()" class="p-1 rounded-lg bg-surface-200 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
       <div class="space-y-3">
         <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Nome do Hábito</label>
-          <input id="habitNameInput" type="text" placeholder="Ex: Leitura diária, Beber Água, Treino..." class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+          <label class="block text-xs font-medium text-slate-300 mb-1">Nome do Hábito / Comportamento</label>
+          <input id="habitNameInput" type="text" placeholder="Ex: Hidratação Intensa, Leitura Técnica, Academia..." class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
         </div>
+
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Meta Diária</label>
-            <input id="habitGoalInput" type="number" min="1" value="5" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+            <label class="block text-xs font-medium text-slate-300 mb-1">Meta Diária Numérica</label>
+            <input id="habitGoalInput" type="number" min="1" value="8" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
           </div>
           <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Unidade</label>
-            <input id="habitUnitInput" type="text" placeholder="copos, páginas, min" value="copos" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+            <label class="block text-xs font-medium text-slate-300 mb-1">Unidade de Medida</label>
+            <input id="habitUnitInput" type="text" placeholder="copos, págs, km, min" value="copos" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
           </div>
         </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Categoria / Área</label>
+            <select id="habitCategoryInput" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+              <option value="Saúde & Corpo">💧 Saúde & Corpo</option>
+              <option value="Intelecto & Estudos">📚 Intelecto & Estudos</option>
+              <option value="Trabalho & Foco">⚡ Trabalho & Foco</option>
+              <option value="Mindset & Controle">🧘 Mindset & Autocontrole</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Momento Sugerido</label>
+            <select id="habitPeriodInput" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+              <option value="Ao acordar / Manhã">☀️ Ao acordar / Manhã</option>
+              <option value="Durante o expediente">💼 Durante o dia</option>
+              <option value="Noite / Antes de dormir">🌙 Noite</option>
+              <option value="Qualquer momento">⏰ Todo o dia</option>
+            </select>
+          </div>
+        </div>
+
         <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Tipo de Hábito</label>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Tipo de Ação</label>
           <select id="habitTypeInput" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
-            <option value="positive">Construção Positiva (ex: Exercício, Água, Leitura)</option>
-            <option value="reduction">Substituição / Troca de Impulso (ex: Parar Vício)</option>
+            <option value="positive">Construção Positiva (Criar / Manter hábito)</option>
+            <option value="reduction">Troca de Gatilho / Substituição de Vício (Gole Limpo)</option>
           </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Motivação / Estratégia de Apoio</label>
+          <input id="habitMotivationInput" type="text" placeholder="Ex: Ter mais energia e clareza mental no trabalho" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
         </div>
       </div>
       <div class="flex gap-2 pt-2">
@@ -719,66 +764,111 @@
   </div>
 
   <!-- Modal Configurar Meta da Caixinha -->
-  <div id="savingsConfigModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-4">
-    <div class="bg-surface-100 border border-surface-border w-full max-w-xs rounded-2xl p-5 space-y-4">
-      <h3 class="text-sm font-bold text-white">Definir Meta da Caixinha</h3>
-      <div>
-        <label class="block text-xs font-medium text-slate-300 mb-1">Meta Desejada (R$)</label>
-        <input id="savingsTargetInput" type="number" step="50" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+  <div id="savingsConfigModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-surface-100 border border-surface-border w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-surface-border">
+        <h3 class="text-sm font-bold text-white">Configurar Meta de Poupança</h3>
+        <button onclick="document.getElementById('savingsConfigModal').classList.add('hidden')" class="p-1 rounded-lg bg-surface-200 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
-      <div class="flex gap-2">
-        <button onclick="document.getElementById('savingsConfigModal').classList.add('hidden')" class="flex-1 py-2 rounded-xl bg-surface-200 text-slate-300 text-xs font-semibold">Cancelar</button>
-        <button onclick="NexusApp.savings.saveConfig()" class="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold">Salvar</button>
+      <div>
+        <label class="block text-xs font-medium text-slate-300 mb-1">Valor Alvo da Meta (R$)</label>
+        <input id="savingsTargetInput" type="number" step="100" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button onclick="document.getElementById('savingsConfigModal').classList.add('hidden')" class="flex-1 py-2.5 rounded-xl bg-surface-200 text-slate-300 text-xs font-semibold">Cancelar</button>
+        <button onclick="NexusApp.savings.saveConfig()" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold">Salvar Meta</button>
       </div>
     </div>
   </div>
 
-  <!-- 1. Modal Deslize -->
+  <!-- Modal Registro de Deslize / Auditoria de Gatilho -->
   <div id="slipModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-surface-100 border border-surface-border w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
       <div class="flex justify-between items-center pb-2 border-b border-surface-border">
-        <h3 class="text-sm font-bold text-white">Registrar Deslize de Impulso</h3>
+        <div>
+          <h3 class="text-sm font-bold text-white">Auditoria de Deslize / Gatilho</h3>
+          <p class="text-[11px] text-slate-400">Identifique o estado emocional para neutralizar o padrão.</p>
+        </div>
         <button onclick="NexusApp.closeSlideOverDeslize()" class="p-1 rounded-lg bg-surface-200 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-300 mb-1.5">Gatilho Principal</label>
-        <div class="grid grid-cols-2 gap-2" id="triggerTagSelector">
-          <button type="button" onclick="NexusApp.habits.selectTriggerTag(this, 'Estresse / Trabalho')" class="trigger-btn text-left p-2 rounded-xl bg-surface-200 border border-transparent text-xs text-slate-200">😤 Estresse / Pressão</button>
-          <button type="button" onclick="NexusApp.habits.selectTriggerTag(this, 'Tédio / Ociosidade')" class="trigger-btn text-left p-2 rounded-xl bg-surface-200 border border-transparent text-xs text-slate-200">🥱 Tédio / Espera</button>
-          <button type="button" onclick="NexusApp.habits.selectTriggerTag(this, 'Social / Bar')" class="trigger-btn text-left p-2 rounded-xl bg-surface-200 border border-transparent text-xs text-slate-200">🍻 Social / Bar</button>
-          <button type="button" onclick="NexusApp.habits.selectTriggerTag(this, 'Pós Café / Almoço')" class="trigger-btn text-left p-2 rounded-xl bg-surface-200 border border-transparent text-xs text-slate-200">☕ Pós Café / Refeição</button>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">Gatilho Primário Detectado</label>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <button type="button" onclick="NexusApp.habits.selectTriggerTag(this, 'Estresse / Trabalho')" class="trigger-btn p-2 rounded-xl bg-surface-200 border border-rose-500 bg-rose-950/40 text-slate-200 text-left font-medium">⚡ Estresse / Trabalho</button>
+            <button type="button" onclick="NexusApp.habits.selectTriggerTag(this, 'Tédio / Distração')" class="trigger-btn p-2 rounded-xl bg-surface-200 border border-surface-border text-slate-300 text-left font-medium">🥱 Tédio / Distração</button>
+            <button type="button" onclick="NexusApp.habits.selectTriggerTag(this, 'Social / Álcool')" class="trigger-btn p-2 rounded-xl bg-surface-200 border border-surface-border text-slate-300 text-left font-medium">🍻 Social / Álcool</button>
+            <button type="button" onclick="NexusApp.habits.selectTriggerTag(this, 'Hábito Mecânico / Café')" class="trigger-btn p-2 rounded-xl bg-surface-200 border border-surface-border text-slate-300 text-left font-medium">☕ Hábito Mecânico</button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Notas do Momento</label>
+          <textarea id="slipNotesInput" rows="2" placeholder="O que você estava fazendo? O que sentiu?" class="w-full bg-surface-200 border border-surface-border rounded-xl p-2.5 text-xs text-white resize-none"></textarea>
         </div>
       </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-300 mb-1">Notas / O que melhorar na próxima vez?</label>
-        <input id="slipNotesInput" type="text" placeholder="Ex: Deixar garrafa de água à mão..." class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
-      </div>
-      <div class="flex gap-2 pt-2">
+      <div class="flex gap-2 pt-1">
         <button onclick="NexusApp.closeSlideOverDeslize()" class="flex-1 py-2.5 rounded-xl bg-surface-200 text-slate-300 text-xs font-semibold">Cancelar</button>
-        <button onclick="NexusApp.habits.saveSlip()" class="flex-1 py-2.5 rounded-xl bg-rose-600 text-white text-xs font-semibold">Salvar Registro</button>
+        <button onclick="NexusApp.habits.saveSlip()" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold">Registrar Deslize</button>
       </div>
     </div>
   </div>
 
-  <!-- 2. Modal Novo Curso -->
+  <!-- 2. Modal Novo Curso Completo -->
   <div id="courseModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="bg-surface-100 border border-surface-border w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+    <div class="bg-surface-100 border border-surface-border w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
       <div class="flex justify-between items-center pb-2 border-b border-surface-border">
-        <h3 class="text-sm font-bold text-white">Cadastrar Novo Curso</h3>
+        <div>
+          <h3 class="text-sm font-bold text-white">Cadastrar Curso / Certificação</h3>
+          <p class="text-[11px] text-slate-400">Registre dados completos de cronograma e acesso.</p>
+        </div>
         <button onclick="NexusApp.courses.closeAddModal()" class="p-1 rounded-lg bg-surface-200 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-medium text-slate-300 mb-1">Título do Curso</label>
-          <input id="courseTitleInput" type="text" placeholder="Ex: Pós em Arquitetura de Software" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+          <input id="courseTitleInput" type="text" placeholder="Ex: Especialização em Direito Tributário & IA" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
         </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Instituição / Plataforma</label>
-          <input id="coursePlatformInput" type="text" placeholder="Ex: Coursera, Alura, FIAP" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Instituição / Plataforma</label>
+            <input id="coursePlatformInput" type="text" placeholder="Ex: FGV, Udemy, Alura, PUC" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Professor / Instrutor</label>
+            <input id="courseInstructorInput" type="text" placeholder="Ex: Dr. Roberto / Equipe" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+          </div>
         </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Total de Aulas / Módulos</label>
+            <input id="courseTotalInput" type="number" min="1" value="40" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Carga Horária (horas)</label>
+            <input id="courseHoursInput" type="number" min="1" value="60" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Data Limite / Conclusão</label>
+            <input id="courseDeadlineInput" type="date" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Status</label>
+            <select id="courseStatusInput" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+              <option value="Em andamento">Em andamento</option>
+              <option value="Prioritário">🔥 Prioritário</option>
+              <option value="Pausado">Pausado</option>
+            </select>
+          </div>
+        </div>
+
         <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Total de Aulas Planejadas</label>
-          <input id="courseTotalInput" type="number" value="30" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+          <label class="block text-xs font-medium text-slate-300 mb-1">Link de Acesso Direto (Portal/Classroom)</label>
+          <input id="courseLinkInput" type="url" placeholder="https://..." class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
         </div>
       </div>
       <div class="flex gap-2 pt-2">
@@ -788,25 +878,47 @@
     </div>
   </div>
 
-  <!-- 3. Modal Nova Viagem -->
+  <!-- 3. Modal Nova Viagem Completo -->
   <div id="tripModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="bg-surface-100 border border-surface-border w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+    <div class="bg-surface-100 border border-surface-border w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
       <div class="flex justify-between items-center pb-2 border-b border-surface-border">
-        <h3 class="text-sm font-bold text-white">Cadastrar Nova Viagem</h3>
+        <div>
+          <h3 class="text-sm font-bold text-white">Cadastrar Nova Viagem Completa</h3>
+          <p class="text-[11px] text-slate-400">Defina orçamento, hospedagem e participantes do rateio.</p>
+        </div>
         <button onclick="NexusApp.trips.closeAddModal()" class="p-1 rounded-lg bg-surface-200 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
       <div class="space-y-3">
         <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Destino</label>
-          <input id="tripDestinationInput" type="text" placeholder="Ex: Gramado - RS" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+          <label class="block text-xs font-medium text-slate-300 mb-1">Destino Principal</label>
+          <input id="tripDestinationInput" type="text" placeholder="Ex: Florianópolis & Praias do Sul" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
         </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Período / Datas</label>
-          <input id="tripDatesInput" type="text" placeholder="Ex: 10 a 16 de Novembro" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Período / Datas</label>
+            <input id="tripDatesInput" type="text" placeholder="Ex: 15 a 22 de Janeiro" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Orçamento Teto (R$)</label>
+            <input id="tripBudgetInput" type="number" step="100" placeholder="Ex: 4000" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+          </div>
         </div>
+
         <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Participantes (separados por vírgula)</label>
-          <input id="tripParticipantsInput" type="text" placeholder="Ex: Eu, Carlos, Beatriz" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+          <label class="block text-xs font-medium text-slate-300 mb-1">Participantes do Rateio (separados por vírgula)</label>
+          <input id="tripParticipantsInput" type="text" placeholder="Ex: Eu, Gabriel, Marina, Lucas" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+          <p class="text-[10px] text-slate-500 mt-1">Insira 'Eu' para incluir seu próprio saldo no cálculo.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Hospedagem / Ponto de Apoio</label>
+          <input id="tripLodgingInput" type="text" placeholder="Ex: Pousada Beira Mar / Airbnb Lagoa" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Anotações / Dicas Importantes</label>
+          <textarea id="tripNotesInput" rows="2" placeholder="Ex: Levar casaco para noites frias, chave do portão com Gabriel..." class="w-full bg-surface-200 border border-surface-border rounded-xl p-2.5 text-xs text-white resize-none"></textarea>
         </div>
       </div>
       <div class="flex gap-2 pt-2">
@@ -879,7 +991,7 @@
   <!-- ================= LÓGICA E ESTADO CENTRALIZADO ================= -->
   <script>
     const DEFAULT_APP_STATE = {
-      version: "3.2.0",
+      version: "3.3.0",
       auth: {
         username: "admin",
         password: "123",
@@ -903,15 +1015,21 @@
         {
           id: 1,
           name: "Gole Limpo (Trocar Impulso por Água)",
+          category: "Saúde & Corpo",
+          period: "Ao acordar / Manhã",
+          motivation: "Substituir ansiedade e impulsos mecânicos por hidratação",
           unit: "copos",
           dailyGoal: 8,
-          todayValue: 4,
+          todayValue: 5,
           type: "reduction",
-          history: [4, 6, 8, 8, 7, 5, 4]
+          history: [4, 6, 8, 8, 7, 5, 5]
         },
         {
           id: 2,
           name: "Leitura Jurídica / Livros",
+          category: "Intelecto & Estudos",
+          period: "Noite / Antes de dormir",
+          motivation: "Manter atualização contínua e foco analítico",
           unit: "páginas",
           dailyGoal: 15,
           todayValue: 15,
@@ -932,9 +1050,14 @@
           id: 201,
           title: "Engenharia de Software & IA",
           platform: "Alura",
+          instructor: "Prof. Vinicius",
+          hours: 60,
+          deadline: "2026-12-15",
+          status: "Prioritário",
+          link: "https://alura.com.br",
           totalLessons: 40,
           completedLessons: 22,
-          notes: "Focar em microsserviços e bancos distribuídos."
+          notes: "Focar em microsserviços, cache distribuído e boas práticas em Clean Architecture."
         }
       ],
       trips: {
@@ -944,6 +1067,9 @@
             id: 301,
             destination: "Serra Gaúcha & Gramado",
             dates: "12 a 17 de Novembro",
+            budget: 4500,
+            lodging: "Hotel Alpestre Gramado",
+            notes: "Alugar carro econômico com boa mala e casacos reforçados.",
             participants: ["Eu", "Lucas", "Mariana"],
             itinerary: [
               { id: 1, time: "Dia 1 - 09:00", activity: "Check-in Hotel e Café Colonial", done: true },
@@ -985,14 +1111,11 @@
         lucide.createIcons();
       },
 
-      // FEEDBACK SENSORIAL: Web Audio API (Sons de Gota d'Água) + Háptico (Vibração)
+      // FEEDBACK SENSORIAL: Web Audio API + Háptico
       sensoryFeedback(type = 'water') {
-        // 1. Vibração háptica
         if ('vibrate' in navigator) {
           try { navigator.vibrate(type === 'water' ? [30, 20, 40] : 25); } catch (e) {}
         }
-
-        // 2. Web Audio API sintetizado
         try {
           const AudioContextClass = window.AudioContext || window.webkitAudioContext;
           if (!AudioContextClass) return;
@@ -1004,34 +1127,27 @@
           const gain = audioCtx.createGain();
 
           if (type === 'water') {
-            // Curva rápida senoidal simulando gota d'água caindo
             osc.type = 'sine';
             osc.frequency.setValueAtTime(540, now);
             osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
             osc.frequency.exponentialRampToValueAtTime(420, now + 0.16);
-
             gain.gain.setValueAtTime(0.35, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start(now);
             osc.stop(now + 0.18);
           } else {
-            // Clique suave de confirmação
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(440, now);
             gain.gain.setValueAtTime(0.15, now);
             gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
-
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start(now);
             osc.stop(now + 0.06);
           }
-        } catch (e) {
-          // Navegador sem suporte a áudio
-        }
+        } catch (e) {}
       },
 
       updateHeaderDate() {
@@ -1040,7 +1156,7 @@
         dateEl.textContent = new Date().toLocaleDateString('pt-BR', options);
       },
 
-      // 1. AUTENTICAÇÃO TOLERANTE COM OPÇÃO DE DESATIVAR
+      // 1. AUTENTICAÇÃO
       auth: {
         checkSession() {
           const authScreen = document.getElementById('authScreen');
@@ -1108,7 +1224,7 @@
         }
       },
 
-      // 2. ROTEAMENTO OTIMIZADO (5 ABAS PRINCIPAIS + GAVETA MAIS)
+      // 2. ROTEAMENTO
       router: {
         activeTab: 'dashboard',
         toggleMoreMenu() {
@@ -1155,7 +1271,7 @@
         }
       },
 
-      // 3. AÇÕES RÁPIDAS DE 1 TOQUE (PERSONALIZÁVEIS)
+      // 3. AÇÕES RÁPIDAS DE 1 TOQUE
       quickActions: {
         openModal() {
           document.getElementById('quickActionModal').classList.remove('hidden');
@@ -1212,7 +1328,7 @@
         }
       },
 
-      // 4. HÁBITOS TOTALMENTE PERSONALIZÁVEIS, FEEDBACK SENSORIAL & GRÁFICOS
+      // 4. HÁBITOS COM DADOS IMPORTANTES E GRÁFICOS APERFEIÇOADOS
       habits: {
         openNewModal() {
           document.getElementById('newHabitModal').classList.remove('hidden');
@@ -1224,7 +1340,10 @@
           const name = document.getElementById('habitNameInput').value.trim();
           const goal = parseInt(document.getElementById('habitGoalInput').value) || 1;
           const unit = document.getElementById('habitUnitInput').value.trim() || 'vezes';
+          const category = document.getElementById('habitCategoryInput').value;
+          const period = document.getElementById('habitPeriodInput').value;
           const type = document.getElementById('habitTypeInput').value;
+          const motivation = document.getElementById('habitMotivationInput').value.trim();
 
           if (!name) {
             NexusApp.showToast('Informe o nome do hábito.', 'alert-triangle');
@@ -1235,6 +1354,9 @@
             id: Date.now(),
             name,
             unit,
+            category,
+            period,
+            motivation,
             dailyGoal: goal,
             todayValue: 0,
             type,
@@ -1245,6 +1367,7 @@
           NexusApp.storage.save();
           NexusApp.habits.closeNewModal();
           document.getElementById('habitNameInput').value = '';
+          document.getElementById('habitMotivationInput').value = '';
           NexusApp.renderHabits();
           NexusApp.renderDashboard();
           NexusApp.showToast('Hábito cadastrado com sucesso!', 'target');
@@ -1260,7 +1383,6 @@
             habit.history[habit.history.length - 1] = habit.todayValue;
           }
 
-          // Dispara feedback tátil e sonoro se for incremento
           if (delta > 0) {
             NexusApp.sensoryFeedback(habit.unit.toLowerCase().includes('copo') || habit.name.toLowerCase().includes('água') ? 'water' : 'click');
           }
@@ -1392,7 +1514,6 @@
           const opt = sel.options[sel.selectedIndex];
           const baseSug = parseFloat(opt.getAttribute('data-base')) || 0;
           
-          // Valores agora totalmente editáveis pelo usuário (sem travar)
           const causeVal = parseFloat(document.getElementById('oabCauseValue').value) || 0;
           const pct = parseFloat(document.getElementById('oabPercent').value) || 0;
           const retainer = parseFloat(document.getElementById('oabRetainer').value) || 0;
@@ -1431,7 +1552,6 @@
 
 _Valores em conformidade com as diretrizes e piso de referência da Tabela de Honorários da OAB._`;
 
-          // Compatibilidade com iFrames e navegadores
           try {
             const textarea = document.createElement('textarea');
             textarea.value = textToCopy;
@@ -1470,7 +1590,7 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
         }
       },
 
-      // 7. CHECKLISTS, CURSOS E VIAGENS COM FILTRO/CATEGORIAS
+      // 7. CHECKLISTS, CURSOS E VIAGENS
       checklists: {
         toggleItem(id) {
           const item = AppState.checklists.find(c => c.id === id);
@@ -1523,7 +1643,12 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
         saveNewCourse() {
           const title = document.getElementById('courseTitleInput').value.trim();
           const platform = document.getElementById('coursePlatformInput').value.trim() || 'Geral';
+          const instructor = document.getElementById('courseInstructorInput').value.trim() || 'Não especificado';
           const total = parseInt(document.getElementById('courseTotalInput').value) || 10;
+          const hours = parseInt(document.getElementById('courseHoursInput').value) || 0;
+          const deadline = document.getElementById('courseDeadlineInput').value || '';
+          const status = document.getElementById('courseStatusInput').value || 'Em andamento';
+          const link = document.getElementById('courseLinkInput').value.trim() || '';
 
           if (!title) {
             NexusApp.showToast('Insira o título do curso.', 'alert-triangle');
@@ -1534,6 +1659,11 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
             id: Date.now(),
             title,
             platform,
+            instructor,
+            hours,
+            deadline,
+            status,
+            link,
             totalLessons: total,
             completedLessons: 0,
             notes: ''
@@ -1543,9 +1673,11 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
           NexusApp.courses.closeAddModal();
           document.getElementById('courseTitleInput').value = '';
           document.getElementById('coursePlatformInput').value = '';
+          document.getElementById('courseInstructorInput').value = '';
+          document.getElementById('courseLinkInput').value = '';
           NexusApp.renderCourses();
           NexusApp.renderDashboard();
-          NexusApp.showToast('Curso cadastrado!', 'graduation-cap');
+          NexusApp.showToast('Curso cadastrado com sucesso!', 'graduation-cap');
         },
         changeProgress(courseId, delta) {
           const course = AppState.courses.find(c => c.id === courseId);
@@ -1583,6 +1715,9 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
         saveNewTrip() {
           const destination = document.getElementById('tripDestinationInput').value.trim();
           const dates = document.getElementById('tripDatesInput').value.trim() || 'A definir';
+          const budget = parseFloat(document.getElementById('tripBudgetInput').value) || 0;
+          const lodging = document.getElementById('tripLodgingInput').value.trim() || 'A definir';
+          const notes = document.getElementById('tripNotesInput').value.trim() || '';
           const participantsRaw = document.getElementById('tripParticipantsInput').value.trim();
 
           if (!destination) {
@@ -1598,6 +1733,9 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
             id: Date.now(),
             destination,
             dates,
+            budget,
+            lodging,
+            notes,
             participants,
             itinerary: [],
             expenses: []
@@ -1609,15 +1747,30 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
           NexusApp.trips.closeAddModal();
           document.getElementById('tripDestinationInput').value = '';
           document.getElementById('tripDatesInput').value = '';
+          document.getElementById('tripBudgetInput').value = '';
+          document.getElementById('tripLodgingInput').value = '';
+          document.getElementById('tripNotesInput').value = '';
           document.getElementById('tripParticipantsInput').value = '';
           NexusApp.renderTrips();
           NexusApp.renderDashboard();
-          NexusApp.showToast('Viagem criada!', 'plane');
+          NexusApp.showToast('Viagem criada com sucesso!', 'plane');
         },
         selectTrip(tripId) {
           AppState.trips.activeTripId = Number(tripId);
           NexusApp.storage.saveSilent();
           NexusApp.renderTrips();
+        },
+        removeActiveTrip() {
+          if (AppState.trips.items.length <= 1) {
+            NexusApp.showToast('Você precisa manter pelo menos uma viagem.', 'alert-triangle');
+            return;
+          }
+          AppState.trips.items = AppState.trips.items.filter(t => t.id !== AppState.trips.activeTripId);
+          AppState.trips.activeTripId = AppState.trips.items[0].id;
+          NexusApp.storage.save();
+          NexusApp.renderTrips();
+          NexusApp.renderDashboard();
+          NexusApp.showToast('Viagem excluída.', 'trash-2');
         },
         setFilterCategory(cat) {
           AppState.tripFilter.category = cat;
@@ -1843,6 +1996,11 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
 
       renderQuickActionsManage() {
         const list = document.getElementById('quickActionsManageList');
+        if (!list) return;
+        if (!Array.isArray(AppState.quickActions) || AppState.quickActions.length === 0) {
+          list.innerHTML = `<p class="text-xs text-slate-500 py-3 text-center">Nenhum atalho cadastrado.</p>`;
+          return;
+        }
         list.innerHTML = AppState.quickActions.map(qa => `
           <div class="flex items-center justify-between p-2 rounded-xl bg-surface-200 text-xs">
             <div class="flex items-center gap-2">
@@ -1864,56 +2022,88 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
           return;
         }
 
+        const dayLabels = ['D-6', 'D-5', 'D-4', 'D-3', 'D-2', 'Ontem', 'Hoje'];
+
         container.innerHTML = AppState.habitsList.map(h => {
           const pct = Math.min(100, Math.round((h.todayValue / (h.dailyGoal || 1)) * 100));
           const hist = h.history || [0, 0, 0, 0, 0, 0, h.todayValue];
           const maxVal = Math.max(h.dailyGoal, ...hist, 1);
 
+          // Gráfico SVG aprimorado com linha de meta, labels e barras estilizadas
+          const goalLineY = 56 - Math.round((h.dailyGoal / maxVal) * 44);
+
           const barsSvg = hist.map((val, idx) => {
-            const hPct = Math.min(100, Math.round((val / maxVal) * 100));
             const isToday = idx === hist.length - 1;
-            const barFill = isToday ? '#10b981' : (val >= h.dailyGoal ? '#065f46' : '#334155');
-            const x = idx * 14 + 2;
-            const barHeight = Math.max(4, Math.round((hPct / 100) * 32));
-            const y = 36 - barHeight;
-            return `<rect x="${x}" y="${y}" width="10" height="${barHeight}" rx="2" fill="${barFill}" />`;
+            const barHeight = Math.max(4, Math.round((val / maxVal) * 44));
+            const y = 56 - barHeight;
+            const x = idx * 36 + 8;
+            const reachedGoal = val >= h.dailyGoal;
+            const barColor = isToday 
+              ? (reachedGoal ? '#10b981' : '#06b6d4') 
+              : (reachedGoal ? '#047857' : '#334155');
+
+            return `
+              <g class="chart-bar-glow">
+                <rect x="${x}" y="${y}" width="18" height="${barHeight}" rx="4" fill="${barColor}" />
+                <text x="${x + 9}" y="${y - 4}" text-anchor="middle" font-size="8" fill="#94a3b8" font-weight="600">${val}</text>
+                <text x="${x + 9}" y="68" text-anchor="middle" font-size="7.5" fill="${isToday ? '#34d399' : '#64748b'}" font-weight="${isToday ? 'bold' : 'normal'}">${dayLabels[idx]}</text>
+              </g>
+            `;
           }).join('');
 
           return `
-            <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3">
+            <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3.5">
               <div class="flex justify-between items-start">
-                <div>
-                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${h.type === 'reduction' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'}">
-                    ${h.type === 'reduction' ? 'Substituição / Troca de Impulso' : 'Hábito Positivo'}
-                  </span>
-                  <h3 class="text-sm font-bold text-white mt-1.5">${h.name}</h3>
-                  <p class="text-xs text-slate-400">Meta: <b class="text-slate-200">${h.dailyGoal} ${h.unit}/dia</b></p>
+                <div class="space-y-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${h.type === 'reduction' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'}">
+                      ${h.type === 'reduction' ? 'Substituição / Troca de Impulso' : 'Hábito Positivo'}
+                    </span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-surface-200 text-slate-300 border border-surface-border">
+                      ${h.category || 'Geral'}
+                    </span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-surface-200 text-slate-400">
+                      ${h.period || 'Dia todo'}
+                    </span>
+                  </div>
+                  <h3 class="text-sm font-bold text-white mt-1">${h.name}</h3>
+                  ${h.motivation ? `<p class="text-[11px] text-slate-400 italic">“${h.motivation}”</p>` : ''}
                 </div>
                 <button onclick="NexusApp.habits.remove(${h.id})" class="text-slate-500 hover:text-rose-400 p-1">
                   <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                 </button>
               </div>
 
-              <div class="bg-surface-200/60 rounded-xl p-3 border border-surface-border flex items-center justify-between gap-4">
-                <div class="flex-1">
-                  <div class="flex justify-between text-xs mb-1">
-                    <span class="font-medium text-slate-300">Hoje: <b class="text-white">${h.todayValue}</b> / ${h.dailyGoal} ${h.unit}</span>
-                    <span class="font-bold ${pct >= 100 ? 'text-emerald-400' : 'text-cyan-400'}">${pct}%</span>
-                  </div>
-                  <div class="w-full bg-surface-300 h-2 rounded-full overflow-hidden">
-                    <div class="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full rounded-full transition-all duration-300" style="width: ${pct}%"></div>
-                  </div>
+              <!-- BARRA DE PROGRESSO DO DIA -->
+              <div class="bg-surface-200/50 rounded-xl p-3 border border-surface-border space-y-2">
+                <div class="flex justify-between items-baseline text-xs">
+                  <span class="font-medium text-slate-300">Hoje: <b class="text-white text-sm">${h.todayValue}</b> / ${h.dailyGoal} ${h.unit}</span>
+                  <span class="font-bold text-xs ${pct >= 100 ? 'text-emerald-400' : 'text-cyan-400'}">${pct}% da meta</span>
                 </div>
+                <div class="w-full bg-surface-300 h-2.5 rounded-full overflow-hidden">
+                  <div class="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                </div>
+              </div>
 
-                <div class="text-right">
-                  <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider block mb-1">Últimos 7 Dias</span>
-                  <svg width="102" height="38" class="overflow-visible">
+              <!-- GRÁFICO VISUAL MELHORADO DOS ÚLTIMOS 7 DIAS -->
+              <div class="bg-surface-200/30 rounded-xl p-3 border border-surface-border">
+                <div class="flex justify-between items-center text-[10px] text-slate-400 font-semibold mb-2">
+                  <span>EVOLUÇÃO DOS ÚLTIMOS 7 DIAS</span>
+                  <span class="flex items-center gap-1 text-slate-400">
+                    <span class="w-2 h-0.5 bg-emerald-500 inline-block"></span> Meta (${h.dailyGoal} ${h.unit})
+                  </span>
+                </div>
+                <div class="w-full overflow-x-auto hide-scrollbar flex justify-center">
+                  <svg width="270" height="74" class="overflow-visible">
+                    <!-- Linha tracejada da meta -->
+                    <line x1="0" y1="${goalLineY}" x2="265" y2="${goalLineY}" stroke="#10b981" stroke-dasharray="3 3" stroke-width="1" opacity="0.6"/>
                     ${barsSvg}
                   </svg>
                 </div>
               </div>
 
-              <div class="flex items-center gap-2 pt-1">
+              <!-- AÇÕES RÁPIDAS -->
+              <div class="flex items-center gap-2 pt-0.5">
                 <button onclick="NexusApp.habits.increment(${h.id}, 1)" class="tap-scale flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-cyan-600/20">
                   <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                   <span>+1 ${h.unit}</span>
@@ -2007,46 +2197,64 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
         }
 
         container.innerHTML = AppState.courses.map(course => {
-          const pct = Math.round((course.completedLessons / course.totalLessons) * 100) || 0;
+          const pct = Math.round((course.completedLessons / (course.totalLessons || 1)) * 100) || 0;
           const isDone = course.completedLessons >= course.totalLessons;
 
           return `
-            <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3">
+            <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3.5">
               <div class="flex justify-between items-start">
-                <div>
-                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${isDone ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'}">
-                    ${isDone ? 'Concluído' : course.platform}
-                  </span>
-                  <h3 class="text-sm font-bold text-white mt-1.5">${course.title}</h3>
+                <div class="space-y-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${isDone ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'}">
+                      ${isDone ? 'Concluído' : (course.status || 'Em andamento')}
+                    </span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-surface-200 text-slate-300">
+                      ${course.platform}
+                    </span>
+                    ${course.hours ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-surface-200 text-slate-400">${course.hours}h</span>` : ''}
+                  </div>
+                  <h3 class="text-sm font-bold text-white mt-1">${course.title}</h3>
+                  <div class="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
+                    ${course.instructor ? `<span>Instrutor: <b class="text-slate-300">${course.instructor}</b></span>` : ''}
+                    ${course.deadline ? `<span>Prazo: <b class="text-indigo-300">${new Date(course.deadline + 'T00:00:00').toLocaleDateString('pt-BR')}</b></span>` : ''}
+                  </div>
                 </div>
-                <button onclick="NexusApp.courses.removeCourse(${course.id})" class="text-slate-500 hover:text-rose-400 p-1">
-                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                </button>
+                <div class="flex items-center gap-1">
+                  ${course.link ? `
+                    <a href="${course.link}" target="_blank" rel="noopener noreferrer" class="p-1.5 text-indigo-400 hover:text-indigo-300 bg-surface-200 rounded-lg" title="Acessar Sala de Aula">
+                      <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                    </a>
+                  ` : ''}
+                  <button onclick="NexusApp.courses.removeCourse(${course.id})" class="text-slate-500 hover:text-rose-400 p-1.5">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
               </div>
 
-              <div>
-                <div class="flex justify-between text-xs text-slate-300 font-medium mb-1">
-                  <span>${course.completedLessons} de ${course.totalLessons} aulas</span>
-                  <span>${pct}%</span>
+              <!-- BARRA E AULAS -->
+              <div class="bg-surface-200/50 rounded-xl p-3 border border-surface-border space-y-2">
+                <div class="flex justify-between text-xs text-slate-300 font-medium">
+                  <span>Progresso: <b class="text-white">${course.completedLessons}</b> de ${course.totalLessons} aulas</span>
+                  <span class="font-bold text-indigo-400">${pct}%</span>
                 </div>
-                <div class="w-full bg-surface-200 h-2 rounded-full overflow-hidden">
+                <div class="w-full bg-surface-300 h-2.5 rounded-full overflow-hidden">
                   <div class="bg-gradient-to-r from-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-300" style="width: ${pct}%"></div>
                 </div>
               </div>
 
-              <div class="flex items-center gap-2 pt-1">
-                <button onclick="NexusApp.courses.changeProgress(${course.id}, 1)" class="tap-scale flex-1 py-2 px-3 rounded-xl bg-indigo-950/40 border border-indigo-800/40 text-indigo-300 font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-indigo-900/40">
+              <div class="flex items-center gap-2 pt-0.5">
+                <button onclick="NexusApp.courses.changeProgress(${course.id}, 1)" class="tap-scale flex-1 py-2.5 px-3 rounded-xl bg-indigo-950/40 border border-indigo-800/40 text-indigo-300 font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-indigo-900/40">
                   <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                   <span>Assistir Aula (+1)</span>
                 </button>
-                <button onclick="NexusApp.courses.changeProgress(${course.id}, -1)" class="tap-scale py-2 px-3 rounded-xl bg-surface-200 text-slate-300 font-semibold text-xs hover:bg-surface-300">
+                <button onclick="NexusApp.courses.changeProgress(${course.id}, -1)" class="tap-scale py-2.5 px-3 rounded-xl bg-surface-200 text-slate-300 font-semibold text-xs hover:bg-surface-300">
                   -1
                 </button>
               </div>
 
               <div class="pt-1">
-                <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Lembretes & Notas do Curso</label>
-                <textarea onchange="NexusApp.courses.updateNotes(${course.id}, this.value)" rows="2" placeholder="Ex: Anotações sobre a matéria..." class="w-full bg-surface-200/80 border border-surface-border rounded-xl p-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none">${course.notes || ''}</textarea>
+                <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Notas, Insights & Conteúdo do Módulo</label>
+                <textarea onchange="NexusApp.courses.updateNotes(${course.id}, this.value)" rows="2" placeholder="Anote links, resumos e tópicos a praticar..." class="w-full bg-surface-200/80 border border-surface-border rounded-xl p-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none">${course.notes || ''}</textarea>
               </div>
             </div>
           `;
@@ -2079,6 +2287,8 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
         const totalExpenses = currentTrip.expenses.reduce((acc, curr) => acc + curr.amount, 0);
         const participantCount = currentTrip.participants.length || 1;
         const perPersonShare = totalExpenses / participantCount;
+        const budget = currentTrip.budget || 0;
+        const budgetPercent = budget > 0 ? Math.min(100, Math.round((totalExpenses / budget) * 100)) : 0;
 
         const paidMap = {};
         currentTrip.participants.forEach(p => paidMap[p] = 0);
@@ -2086,7 +2296,6 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
           paidMap[e.payer] = (paidMap[e.payer] || 0) + e.amount;
         });
 
-        // Filtragem de despesas por categoria e texto de busca
         const currentCat = AppState.tripFilter?.category || 'all';
         const currentSearch = AppState.tripFilter?.search || '';
 
@@ -2096,26 +2305,65 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
           return matchCat && matchSearch;
         });
 
+        // Exibição 100% dedicada aos dados da viagem selecionada
         detailsContainer.innerHTML = `
-          <!-- CARD DE RATEIO AUTOMÁTICO -->
-          <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3">
+          <!-- CABEÇALHO DA VIAGEM SELECIONADA -->
+          <div class="bg-gradient-to-r from-surface-100 to-surface-200 border border-surface-border rounded-2xl p-4 space-y-3">
             <div class="flex justify-between items-start">
               <div>
-                <span class="text-[10px] uppercase font-bold text-amber-400 tracking-wider">Rateio Automático</span>
-                <h3 class="text-base font-bold text-white mt-0.5">${currentTrip.destination}</h3>
-                <p class="text-xs text-slate-400">${currentTrip.dates} • ${participantCount} viajantes</p>
+                <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Viagem Selecionada</span>
+                <h3 class="text-lg font-bold text-white mt-0.5">${currentTrip.destination}</h3>
+                <p class="text-xs text-slate-300">${currentTrip.dates}</p>
               </div>
               <div class="text-right">
-                <span class="text-[10px] text-slate-400 block">Total Gasto:</span>
+                <span class="text-[10px] text-slate-400 block">Total Computado:</span>
                 <span class="text-lg font-bold text-amber-400">R$ ${totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
               </div>
+            </div>
+
+            <!-- DADOS ADICIONAIS DE APOIO -->
+            <div class="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-surface-border">
+              <div>
+                <span class="text-[10px] text-slate-400 block">Hospedagem:</span>
+                <span class="font-medium text-slate-200 truncate block">${currentTrip.lodging || 'Não informada'}</span>
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block">Viajantes no Rateio:</span>
+                <span class="font-medium text-slate-200">${participantCount} pessoa(s)</span>
+              </div>
+            </div>
+
+            ${budget > 0 ? `
+              <div class="space-y-1 pt-1">
+                <div class="flex justify-between text-[11px] text-slate-400">
+                  <span>Orçamento consumido: R$ ${totalExpenses.toFixed(2)} de R$ ${budget.toFixed(2)}</span>
+                  <span class="${budgetPercent >= 100 ? 'text-rose-400 font-bold' : 'text-slate-300'}">${budgetPercent}%</span>
+                </div>
+                <div class="w-full bg-surface-300 h-2 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full transition-all duration-300 ${budgetPercent >= 100 ? 'bg-rose-500' : 'bg-amber-500'}" style="width: ${budgetPercent}%"></div>
+                </div>
+              </div>
+            ` : ''}
+
+            ${currentTrip.notes ? `
+              <div class="text-[11px] text-slate-400 italic bg-surface-200/50 p-2 rounded-xl">
+                📌 ${currentTrip.notes}
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- BALANÇO & RATEIO POR PESSOA -->
+          <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3">
+            <div class="flex justify-between items-center">
+              <h4 class="text-xs font-bold text-white uppercase tracking-wider">Divisão de Despesas</h4>
+              <span class="text-xs font-semibold text-amber-400">R$ ${perPersonShare.toFixed(2)} / pessoa</span>
             </div>
 
             <div class="bg-surface-200/50 rounded-xl p-3 border border-surface-border space-y-2">
               <div class="flex justify-between text-[11px] font-semibold text-slate-400 border-b border-surface-border pb-1">
                 <span>Participante</span>
                 <span>Pagou</span>
-                <span>Balanço (R$ ${(perPersonShare).toFixed(2)}/cada)</span>
+                <span>Saldo Final</span>
               </div>
               ${currentTrip.participants.map(p => {
                 const paid = paidMap[p] || 0;
@@ -2134,11 +2382,11 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
             </div>
           </div>
 
-          <!-- REGISTRO DE DESPESA CATEGORIZADA -->
+          <!-- REGISTRO DE DESPESAS DA VIAGEM -->
           <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3">
-            <h4 class="text-xs font-bold text-white uppercase tracking-wider">Computar Novo Gasto</h4>
+            <h4 class="text-xs font-bold text-white uppercase tracking-wider">Computar Gasto</h4>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <input id="tripExpDesc" type="text" placeholder="Descrição (ex: Jantar)" class="col-span-2 sm:col-span-1 bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+              <input id="tripExpDesc" type="text" placeholder="Ex: Almoço, Combustível..." class="col-span-2 sm:col-span-1 bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
               <input id="tripExpAmount" type="number" step="0.01" placeholder="Valor (R$)" class="bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
               <select id="tripExpCat" class="bg-surface-200 border border-surface-border rounded-xl px-2 py-2 text-xs text-white">
                 <option value="Alimentação">🍽️ Alimentação</option>
@@ -2152,15 +2400,15 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
               </select>
             </div>
             <button onclick="NexusApp.trips.addExpense()" class="tap-scale w-full py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold">
-              Adicionar ao Rateio
+              Adicionar Gasto
             </button>
 
-            <!-- FILTRO E BUSCA RÁPIDA NAS DESPESAS -->
+            <!-- FILTROS DE GASTOS -->
             <div class="pt-2 border-t border-surface-border space-y-2">
               <div class="flex flex-col sm:flex-row gap-2 items-center justify-between">
                 <div class="relative w-full sm:w-1/2">
                   <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5"></i>
-                  <input type="text" oninput="NexusApp.trips.setSearch(this.value)" value="${currentSearch}" placeholder="Buscar gasto ou participante..." class="w-full bg-surface-200 border border-surface-border rounded-xl pl-8 pr-3 py-1.5 text-xs text-white">
+                  <input type="text" oninput="NexusApp.trips.setSearch(this.value)" value="${currentSearch}" placeholder="Buscar gasto..." class="w-full bg-surface-200 border border-surface-border rounded-xl pl-8 pr-3 py-1.5 text-xs text-white">
                 </div>
                 <div class="flex gap-1 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 hide-scrollbar">
                   ${['all', 'Alimentação', 'Transporte', 'Hospedagem', 'Passeios'].map(c => `
@@ -2171,9 +2419,9 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
                 </div>
               </div>
 
-              <!-- LISTA DE GASTOS FILTRADA -->
+              <!-- LISTA DE DESPESAS FILTRADA -->
               <div class="space-y-1.5 pt-1">
-                ${filteredExpenses.length === 0 ? '<p class="text-[11px] text-slate-500 text-center py-2">Nenhum gasto correspondente ao filtro.</p>' : ''}
+                ${filteredExpenses.length === 0 ? '<p class="text-[11px] text-slate-500 text-center py-2">Nenhum gasto encontrado.</p>' : ''}
                 ${filteredExpenses.map(e => `
                   <div class="flex items-center justify-between p-2 rounded-xl bg-surface-200/40 text-xs">
                     <div>
@@ -2195,9 +2443,9 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
             </div>
           </div>
 
-          <!-- ITINERÁRIO -->
+          <!-- ITINERÁRIO ESPECÍFICO -->
           <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3">
-            <h4 class="text-xs font-bold text-white uppercase tracking-wider">Itinerário & Atividades</h4>
+            <h4 class="text-xs font-bold text-white uppercase tracking-wider">Itinerário & Agenda</h4>
 
             <div class="flex gap-2">
               <input id="tripItineraryTime" type="text" placeholder="Ex: Dia 1 - 10:00" class="w-1/3 bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
@@ -2208,7 +2456,7 @@ _Valores em conformidade com as diretrizes e piso de referência da Tabela de Ho
             </div>
 
             <div class="space-y-2 pt-1">
-              ${currentTrip.itinerary.length === 0 ? '<p class="text-xs text-slate-500 text-center py-2">Nenhum evento agendado.</p>' : ''}
+              ${currentTrip.itinerary.length === 0 ? '<p class="text-xs text-slate-500 text-center py-2">Nenhum evento agendado para esta viagem.</p>' : ''}
               ${currentTrip.itinerary.map(i => `
                 <div class="flex items-center justify-between p-2.5 rounded-xl bg-surface-200/50 border border-surface-border ${i.done ? 'opacity-60' : ''}">
                   <div class="flex items-center gap-2.5 cursor-pointer flex-1" onclick="NexusApp.trips.toggleItinerary(${i.id})">
