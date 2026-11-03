@@ -1,0 +1,2241 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>NexusHub • Gestão Pessoal, Hábitos & Viagens</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Manifest PWA Inline via Blob -->
+  <script>
+    (function initPwaManifest() {
+      const manifestObj = {
+        name: "NexusHub PWA",
+        short_name: "NexusHub",
+        start_url: "./",
+        display: "standalone",
+        background_color: "#0b0e12",
+        theme_color: "#0b0e12",
+        icons: [{
+          src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%2310b981'/><text x='50%' y='62%' font-size='50' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>N</text></svg>",
+          sizes: "192x192 512x512",
+          type: "image/svg+xml"
+        }]
+      };
+      const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+      const manifestUrl = URL.createObjectURL(manifestBlob);
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = manifestUrl;
+      document.head.appendChild(link);
+
+      // Service Worker Offline via Blob
+      if ('serviceWorker' in navigator) {
+        const swScript = `
+          const CACHE_NAME = 'nexushub-v1';
+          self.addEventListener('install', (e) => self.skipWaiting());
+          self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
+          self.addEventListener('fetch', (e) => {
+            if (e.request.method !== 'GET') return;
+            e.respondWith(
+              fetch(e.request).catch(() => caches.match(e.request))
+            );
+          });
+        `;
+        const swBlob = new Blob([swScript], { type: 'application/javascript' });
+        navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+      }
+    })();
+  </script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            },
+            surface: {
+              50: '#12151a',
+              100: '#181d24',
+              200: '#212731',
+              300: '#2d3542',
+              border: 'rgba(255, 255, 255, 0.08)'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #0b0e12;
+      color: #e2e8f0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    }
+    .safe-bottom {
+      padding-bottom: max(1.2rem, env(safe-area-inset-bottom));
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #212731;
+      border-radius: 4px;
+    }
+    .tap-scale {
+      transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .tap-scale:active {
+      transform: scale(0.97);
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased text-slate-100 overflow-x-hidden">
+
+  <!-- ================= TELA DE LOGIN / BLOQUEIO LOCAL (OPCIONAL) ================= -->
+  <div id="authScreen" class="fixed inset-0 z-50 bg-[#0b0e12] hidden flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-surface-100 border border-surface-border p-6 rounded-3xl shadow-2xl space-y-6">
+      <div class="text-center space-y-2">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
+          <i data-lucide="lock" class="w-7 h-7 text-white"></i>
+        </div>
+        <h2 class="text-xl font-bold tracking-tight text-white">NexusHub Bloqueado</h2>
+        <p class="text-xs text-slate-400">Proteção por senha ativada neste dispositivo.</p>
+      </div>
+
+      <form onsubmit="NexusApp.auth.handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Usuário</label>
+          <div class="relative">
+            <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3"></i>
+            <input id="loginUsername" type="text" required placeholder="admin" autocomplete="username" class="w-full bg-surface-200 border border-surface-border rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Senha</label>
+          <div class="relative">
+            <i data-lucide="key" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3"></i>
+            <input id="loginPassword" type="password" required placeholder="123" autocomplete="current-password" class="w-full bg-surface-200 border border-surface-border rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500">
+          </div>
+        </div>
+
+        <div id="loginErrorMsg" class="text-xs text-rose-400 font-medium hidden text-center">
+          Credenciais incorretas!
+        </div>
+
+        <button type="submit" class="tap-scale w-full py-3 bg-gradient-to-r from-brand-600 to-emerald-500 hover:from-brand-500 hover:to-emerald-400 text-white rounded-xl font-semibold text-xs shadow-lg shadow-brand-500/20 flex items-center justify-center gap-2">
+          <span>Desbloquear</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= TOP HEADER DO APP ================= -->
+  <header id="mainHeader" class="sticky top-0 z-40 bg-surface-50/90 backdrop-blur-md border-b border-surface-border px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
+        <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-sm tracking-tight leading-tight flex items-center gap-1.5">
+          NexusHub <span class="text-[9px] px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30 font-semibold">OFFLINE</span>
+        </h1>
+        <p id="headerDate" class="text-[11px] text-slate-400 capitalize"></p>
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-2">
+      <!-- Indicador Salvo -->
+      <div id="saveBadge" class="flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-full transition-opacity opacity-0 duration-300">
+        <i data-lucide="check" class="w-3 h-3"></i>
+        <span>Salvo</span>
+      </div>
+      <!-- Botão Bloquear / Sair (se ativado) -->
+      <button onclick="NexusApp.auth.lockApp()" id="headerLockBtn" title="Bloquear App" class="p-2 rounded-xl bg-surface-200 text-slate-400 hover:text-rose-400 border border-surface-border hidden">
+        <i data-lucide="lock" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= CORPO PRINCIPAL COM CONTEÚDO DAS ABAS ================= -->
+  <main class="flex-1 w-full max-w-2xl mx-auto px-4 pt-4 pb-28 custom-scrollbar">
+
+    <!-- 1. HUB DIÁRIO (DASHBOARD) -->
+    <section id="view-dashboard" class="space-y-4">
+      <div class="bg-gradient-to-r from-surface-100 to-surface-200 border border-surface-border rounded-2xl p-4 relative overflow-hidden">
+        <div class="absolute -right-4 -bottom-4 w-28 h-28 bg-brand-500/10 rounded-full blur-xl pointer-events-none"></div>
+        <div class="flex justify-between items-start">
+          <div>
+            <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Panorama Geral</span>
+            <h2 class="text-lg font-bold text-white mt-0.5">Execução & Foco</h2>
+            <p class="text-xs text-slate-300 mt-1 max-w-[280px]">Métricas em tempo real de hábitos, cursos ativos, viagens e finanças.</p>
+          </div>
+          <div class="p-2.5 bg-brand-500/20 rounded-xl border border-brand-500/30 text-brand-400">
+            <i data-lucide="activity" class="w-6 h-6"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Stats Grid -->
+      <div class="grid grid-cols-2 gap-3">
+        <!-- Hábitos em Foco -->
+        <div class="bg-surface-100 border border-surface-border rounded-2xl p-3.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-xs font-medium">Hábitos Ativos</span>
+            <i data-lucide="target" class="w-4 h-4 text-cyan-400"></i>
+          </div>
+          <div class="flex items-baseline gap-1">
+            <span id="dashHabitsActiveCount" class="text-2xl font-bold text-white">0</span>
+            <span class="text-xs text-slate-400">em meta</span>
+          </div>
+          <div class="mt-2 text-[11px] text-cyan-400 flex items-center gap-1">
+            <i data-lucide="check-check" class="w-3 h-3"></i>
+            <span id="dashHabitsAvgProgress">0% do dia atingido</span>
+          </div>
+        </div>
+
+        <!-- Checklists -->
+        <div class="bg-surface-100 border border-surface-border rounded-2xl p-3.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-xs font-medium">Rotina Concluída</span>
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div class="flex items-baseline gap-1">
+            <span id="dashTasksPercent" class="text-2xl font-bold text-white">0%</span>
+            <span id="dashTasksRatio" class="text-xs text-slate-400">(0/0)</span>
+          </div>
+          <div class="w-full bg-surface-200 h-1.5 rounded-full overflow-hidden mt-2">
+            <div id="dashTasksBar" class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Cursos Ativos -->
+        <div class="bg-surface-100 border border-surface-border rounded-2xl p-3.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-xs font-medium">Cursos em Progresso</span>
+            <i data-lucide="graduation-cap" class="w-4 h-4 text-indigo-400"></i>
+          </div>
+          <div class="flex items-baseline gap-1">
+            <span id="dashActiveCourses" class="text-2xl font-bold text-white">0</span>
+            <span class="text-xs text-slate-400">cursos</span>
+          </div>
+          <span id="dashCourseNextNote" class="mt-2 text-[11px] text-indigo-300 truncate block">Nenhum curso cadastrado</span>
+        </div>
+
+        <!-- Caixinha Financeira -->
+        <div class="bg-surface-100 border border-surface-border rounded-2xl p-3.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between text-slate-400 mb-1">
+            <span class="text-xs font-medium">Caixinha Guardada</span>
+            <i data-lucide="piggy-bank" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div class="flex items-baseline gap-1">
+            <span id="dashSavingsBalance" class="text-xl font-bold text-white">R$ 0,00</span>
+          </div>
+          <span id="dashSavingsGoalStatus" class="mt-2 text-[11px] text-emerald-300 truncate block">0% da meta</span>
+        </div>
+      </div>
+
+      <!-- Ações Imediatas de 1 Toque (Personalizáveis) -->
+      <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Ações de 1 Toque Personalizáveis</h3>
+            <p class="text-[11px] text-slate-400">Atalhos dinâmicos configuráveis para suas abas e tarefas.</p>
+          </div>
+          <button onclick="NexusApp.quickActions.openModal()" class="tap-scale px-2.5 py-1 bg-surface-200 hover:bg-surface-300 text-slate-300 border border-surface-border rounded-lg text-xs font-semibold flex items-center gap-1">
+            <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+            <span>Gerenciar</span>
+          </button>
+        </div>
+        <div id="quickActionsGrid" class="grid grid-cols-2 gap-2.5">
+          <!-- Renderizado dinamicamente -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. HÁBITOS TOTALMENTE PERSONALIZÁVEIS & GRÁFICOS -->
+    <section id="view-habits" class="space-y-4 hidden">
+      <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 flex justify-between items-center">
+        <div>
+          <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">Módulo Dinâmico</span>
+          <h2 class="text-base font-bold text-white mt-1.5">Rastreador de Hábitos</h2>
+          <p class="text-xs text-slate-400">Metas diárias, contadores rápidos e histórico com gráficos.</p>
+        </div>
+        <button onclick="NexusApp.habits.openNewModal()" class="tap-scale px-3 py-2 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-cyan-600/20">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>Novo Hábito</span>
+        </button>
+      </div>
+
+      <!-- Lista de Hábitos Cadastrados com Gráficos -->
+      <div id="habitsListContainer" class="space-y-4"></div>
+    </section>
+
+    <!-- 3. PROCESSOS & CHECKLISTS RECORRENTES -->
+    <section id="view-checklists" class="space-y-4 hidden">
+      <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-base font-bold text-white">Processos & Checklists Diários</h2>
+            <p class="text-xs text-slate-400">Rotinas repetíveis com progresso em tempo real.</p>
+          </div>
+          <button onclick="NexusApp.checklists.resetDaily()" class="tap-scale px-2.5 py-1.5 bg-surface-200 hover:bg-surface-300 text-slate-300 border border-surface-border rounded-xl text-xs font-semibold flex items-center gap-1.5">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Resetar Dia</span>
+          </button>
+        </div>
+
+        <div>
+          <div class="flex justify-between text-xs text-slate-300 font-medium mb-1.5">
+            <span>Progresso da Rotina</span>
+            <span id="checklistProgressText" class="font-bold text-emerald-400">0% (0/0)</span>
+          </div>
+          <div class="w-full bg-surface-200 h-2 rounded-full overflow-hidden">
+            <div id="checklistProgressBar" class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-1">
+          <input id="newChecklistInput" type="text" placeholder="Adicionar nova rotina/procedimento..." class="flex-1 bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+          <button onclick="NexusApp.checklists.addItem()" class="tap-scale px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1 shadow-md shadow-emerald-600/20">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Adicionar</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="checklistsContainer" class="space-y-2"></div>
+    </section>
+
+    <!-- 4. ACOMPANHAMENTO DE CURSOS -->
+    <section id="view-courses" class="space-y-4 hidden">
+      <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-base font-bold text-white">Acompanhamento de Cursos</h2>
+          <p class="text-xs text-slate-400">Aulas assistidas, progresso e notas por módulo.</p>
+        </div>
+        <button onclick="NexusApp.courses.openAddModal()" class="tap-scale px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>Novo Curso</span>
+        </button>
+      </div>
+
+      <div id="coursesListContainer" class="space-y-4"></div>
+    </section>
+
+    <!-- 5. GESTÃO DE VIAGENS & RATEIO -->
+    <section id="view-trips" class="space-y-4 hidden">
+      <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 flex justify-between items-center">
+        <div>
+          <h2 class="text-base font-bold text-white">Organização de Viagens</h2>
+          <p class="text-xs text-slate-400">Itinerários diários, gastos categorizados e rateio.</p>
+        </div>
+        <button onclick="NexusApp.trips.openAddModal()" class="tap-scale px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-amber-600/20">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>Nova Viagem</span>
+        </button>
+      </div>
+
+      <div class="bg-surface-100 border border-surface-border rounded-2xl p-3">
+        <label class="block text-xs font-semibold text-slate-400 mb-1">Selecione a Viagem Ativa</label>
+        <select id="activeTripSelector" onchange="NexusApp.trips.selectTrip(this.value)" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"></select>
+      </div>
+
+      <div id="selectedTripDetails" class="space-y-4"></div>
+    </section>
+
+    <!-- 6. CALCULADORAS & CAIXINHA FINANCEIRA -->
+    <section id="view-calculators" class="space-y-5 hidden">
+      
+      <!-- A) CAIXINHA / CONTROLE DE DINHEIRO GUARDADO -->
+      <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <i data-lucide="piggy-bank" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-white">Caixinha de Dinheiro Guardado</h3>
+              <p class="text-xs text-slate-400">Reserva de emergência, metas e aportes.</p>
+            </div>
+          </div>
+          <button onclick="NexusApp.savings.openConfigModal()" class="p-1.5 rounded-lg bg-surface-200 text-slate-400 hover:text-white" title="Configurar Meta">
+            <i data-lucide="settings-2" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <!-- Card Saldo e Meta -->
+        <div class="bg-gradient-to-br from-surface-200/90 to-surface-200/40 border border-surface-border rounded-xl p-3.5 space-y-2">
+          <div class="flex justify-between items-baseline">
+            <span class="text-xs font-medium text-slate-400">Saldo Atual Acumulado</span>
+            <span class="text-[11px] text-slate-400">Meta: <b id="savingsGoalDisplay" class="text-slate-200">R$ 5.000,00</b></span>
+          </div>
+          <div class="text-2xl font-black text-emerald-400" id="savingsBalanceDisplay">R$ 0,00</div>
+          <div class="w-full bg-surface-300 h-2 rounded-full overflow-hidden">
+            <div id="savingsProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          <div class="text-right">
+            <span id="savingsProgressText" class="text-[10px] text-slate-400">0% concluído</span>
+          </div>
+        </div>
+
+        <!-- Aportar / Resgatar -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <input id="savingsAmountInput" type="number" step="0.01" placeholder="Valor (R$)" class="bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+          <input id="savingsDescInput" type="text" placeholder="Motivo (ex: Aporte mensal)" class="bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+          <div class="flex gap-2">
+            <button onclick="NexusApp.savings.addMovement('deposit')" class="tap-scale flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1">
+              <i data-lucide="arrow-down-left" class="w-3.5 h-3.5"></i> + Guardar
+            </button>
+            <button onclick="NexusApp.savings.addMovement('withdraw')" class="tap-scale flex-1 py-2 bg-surface-200 hover:bg-surface-300 text-slate-300 border border-surface-border rounded-xl text-xs font-semibold flex items-center justify-center gap-1">
+              <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> Resgatar
+            </button>
+          </div>
+        </div>
+
+        <!-- Histórico de Transações Recentes -->
+        <div>
+          <label class="block text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1.5">Últimas Movimentações</label>
+          <div id="savingsHistoryList" class="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar"></div>
+        </div>
+      </div>
+
+      <!-- B) CALCULADORA DE HONORÁRIOS ADVOCATÍCIOS (PARÂMETROS TABELA OAB) -->
+      <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+              <i data-lucide="scale" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-white">Calculadora de Honorários (Ref. OAB)</h3>
+              <p class="text-xs text-slate-400">Simule valores e copie proposta profissional pronta.</p>
+            </div>
+          </div>
+          <button onclick="NexusApp.calculators.copyOabProposal()" class="tap-scale px-2.5 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-semibold flex items-center gap-1">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            <span>Copiar Proposta</span>
+          </button>
+        </div>
+
+        <div class="space-y-2.5">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Tipo de Procedimento / Referência OAB</label>
+            <select id="oabServiceType" onchange="NexusApp.calculators.onServiceChange()" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+              <option value="civil_inicial" data-base="4500" data-pct="20">Ação Ordinária / Inicial Cível (Piso Ref. R$ 4.500 | 20%)</option>
+              <option value="trabalhista" data-base="3500" data-pct="20">Reclamação Trabalhista (Piso Ref. R$ 3.500 | 20%)</option>
+              <option value="audiencia_instrucao" data-base="1500" data-pct="0">Audiência de Instrução e Julgamento (Piso Ref. R$ 1.500)</option>
+              <option value="audiencia_conciliacao" data-base="800" data-pct="0">Audiência de Conciliação (Piso Ref. R$ 800)</option>
+              <option value="parecer_consulta" data-base="1200" data-pct="0">Parecer Jurídico / Consulta Formal (Piso Ref. R$ 1.200)</option>
+              <option value="recurso_tribunais" data-base="3800" data-pct="10">Recurso para Tribunal (Apelação/RO) (Piso Ref. R$ 3.800)</option>
+              <option value="custom" data-base="0" data-pct="20">Outro Procedimento / Personalizado</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Valor da Causa / Proveito (R$)</label>
+              <input id="oabCauseValue" type="number" step="100" value="25000" oninput="NexusApp.calculators.updateOabCalc()" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Honorários Êxito (%)</label>
+              <input id="oabPercent" type="number" step="1" value="20" min="0" max="100" oninput="NexusApp.calculators.updateOabCalc()" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Pró-Labore / Entrada (R$)</label>
+              <input id="oabRetainer" type="number" step="50" value="2500" oninput="NexusApp.calculators.updateOabCalc()" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-surface-200/80 border border-surface-border rounded-xl p-3.5 space-y-2">
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-slate-400">Piso Referencial OAB Sugerido:</span>
+            <span id="oabPisoDisplay" class="font-semibold text-slate-200">R$ 4.500,00</span>
+          </div>
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-slate-400">Honorários de Êxito Estimados:</span>
+            <span id="oabSuccessDisplay" class="font-semibold text-amber-300">R$ 5.000,00</span>
+          </div>
+          <div class="border-t border-surface-border pt-2 flex justify-between items-baseline">
+            <span class="text-xs font-bold text-white">Honorário Total Estimado:</span>
+            <span id="oabTotalDisplay" class="text-lg font-bold text-emerald-400">R$ 7.500,00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- C) CALCULADORA DE CUSTO PARA ATIVIDADES EXTERNAS & DILIGÊNCIAS -->
+      <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3.5">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+            <i data-lucide="car" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Custo de Atividades Externas & Diligências</h3>
+            <p class="text-xs text-slate-400">Deslocamento, tempo alocado, despesas e preço sugerido.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Valor da Sua Hora (R$/h)</label>
+            <input id="extHourlyRate" type="number" value="120" oninput="NexusApp.calculators.updateExtCost()" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Tempo Total (Horas)</label>
+            <input id="extHoursSpent" type="number" step="0.5" value="2.5" oninput="NexusApp.calculators.updateExtCost()" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Distância Total Ida/Volta (km)</label>
+            <input id="extDistanceKm" type="number" value="45" oninput="NexusApp.calculators.updateExtCost()" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Consumo Carro (km/L)</label>
+            <input id="extConsumption" type="number" step="0.5" value="11" oninput="NexusApp.calculators.updateExtCost()" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Preço Combustível (R$/L)</label>
+            <input id="extFuelPrice" type="number" step="0.05" value="5.89" oninput="NexusApp.calculators.updateExtCost()" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Extras (Pedágio, Estac., Cópias)</label>
+            <input id="extExtras" type="number" value="25" oninput="NexusApp.calculators.updateExtCost()" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+          </div>
+        </div>
+
+        <div class="bg-surface-200/80 border border-surface-border rounded-xl p-3.5 space-y-2">
+          <div class="grid grid-cols-2 gap-2 text-xs text-slate-300">
+            <div>Gasto Combustível: <b id="extFuelCostDisplay" class="text-white">R$ 24,09</b></div>
+            <div>Custo do Seu Tempo: <b id="extTimeCostDisplay" class="text-white">R$ 300,00</b></div>
+            <div>Despesas Extras: <b id="extExtrasDisplay" class="text-white">R$ 25,00</b></div>
+            <div>Custo Operacional Bruto: <b id="extRawCostDisplay" class="text-amber-300">R$ 349,09</b></div>
+          </div>
+          <div class="border-t border-surface-border pt-2 flex justify-between items-baseline">
+            <div>
+              <span class="text-xs font-bold text-white block">Preço Sugerido com Margem (25%):</span>
+              <span class="text-[10px] text-slate-400">Cobre com segurança do seu cliente</span>
+            </div>
+            <span id="extSuggestedDisplay" class="text-lg font-bold text-cyan-400">R$ 436,36</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 7. AJUSTES, SENHA & BACKUP JSON -->
+    <section id="view-settings" class="space-y-4 hidden">
+      <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-4">
+        <div>
+          <h2 class="text-base font-bold text-white">Configurações & Segurança Local</h2>
+          <p class="text-xs text-slate-400">Seus dados ficam 100% no navegador deste dispositivo.</p>
+        </div>
+
+        <!-- Segurança e PIN Opcional -->
+        <div class="bg-surface-200/50 border border-surface-border rounded-xl p-3.5 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <i data-lucide="lock" class="w-3.5 h-3.5 text-brand-400"></i>
+              <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Bloqueio ao Iniciar</span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="settingsRequirePinToggle" onchange="NexusApp.auth.toggleRequirePin(this.checked)" class="sr-only peer">
+              <div class="w-9 h-5 bg-surface-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-500"></div>
+            </label>
+          </div>
+          <p class="text-[11px] text-slate-400">
+            Se desativado, o NexusHub abre diretamente no Dashboard sem pedir senha a cada acesso.
+          </p>
+
+          <div id="credentialsBox" class="space-y-2 pt-1">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1">Usuário</label>
+                <input id="settingsUser" type="text" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1">Senha</label>
+                <input id="settingsPass" type="password" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+              </div>
+            </div>
+            <button onclick="NexusApp.auth.saveCredentials()" class="tap-scale w-full py-2 bg-surface-200 hover:bg-surface-300 border border-surface-border text-slate-200 rounded-xl text-xs font-semibold">
+              Salvar Credenciais
+            </button>
+          </div>
+        </div>
+
+        <!-- Backup e Restauração -->
+        <div class="bg-surface-200/50 border border-surface-border rounded-xl p-3.5 space-y-3">
+          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-brand-400"></i>
+            <span>Backup e Portabilidade (JSON)</span>
+          </h3>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Exporte o arquivo para guardar na nuvem ou restaurar em outro celular/computador sem perder hábitos, cursos ou viagens.
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button onclick="NexusApp.storage.exportJSON()" class="tap-scale py-2.5 px-3 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              <span>Exportar Backup</span>
+            </button>
+            <label class="tap-scale py-2.5 px-3 bg-surface-200 hover:bg-surface-300 border border-surface-border text-slate-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer">
+              <i data-lucide="upload" class="w-4 h-4"></i>
+              <span>Restaurar JSON</span>
+              <input type="file" accept=".json" onchange="NexusApp.storage.importJSON(event)" class="hidden">
+            </label>
+          </div>
+        </div>
+
+        <!-- Reset de Fábrica -->
+        <div class="border-t border-surface-border pt-3 flex justify-between items-center">
+          <div>
+            <span class="text-xs font-semibold text-rose-400 block">Restaurar Padrões de Fábrica</span>
+            <span class="text-[11px] text-slate-500">Limpa todo o localStorage do dispositivo</span>
+          </div>
+          <button onclick="NexusApp.storage.resetFactory()" class="tap-scale px-3 py-1.5 bg-rose-950/40 border border-rose-900/50 text-rose-300 hover:bg-rose-900/40 rounded-xl text-xs font-semibold">
+            Limpar Dados
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= MODAIS FLUTUANTES ATUALIZADOS ================= -->
+  
+  <!-- Modal Gerenciar Ações Rápidas de 1 Toque -->
+  <div id="quickActionModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-surface-100 border border-surface-border w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-surface-border">
+        <h3 class="text-sm font-bold text-white">Gerenciar Ações de 1 Toque</h3>
+        <button onclick="NexusApp.quickActions.closeModal()" class="p-1 rounded-lg bg-surface-200 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Título do Botão</label>
+          <input id="qaTitleInput" type="text" placeholder="Ex: Nova Despesa, +1 Estudo..." class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Destino / Ação</label>
+            <select id="qaActionType" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+              <option value="tab:habits">Ir para Hábitos</option>
+              <option value="tab:checklists">Ir para Checklists</option>
+              <option value="tab:courses">Ir para Cursos</option>
+              <option value="modal:course">Abrir +Novo Curso</option>
+              <option value="tab:trips">Ir para Viagens</option>
+              <option value="modal:trip">Abrir +Nova Viagem</option>
+              <option value="tab:calculators">Ir para Calculadoras</option>
+              <option value="habit:first">Incrementar 1º Hábito (+1)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Ícone</label>
+            <select id="qaIconType" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+              <option value="zap">Raio (Zap)</option>
+              <option value="plus-circle">Mais (+)</option>
+              <option value="target">Alvo</option>
+              <option value="graduation-cap">Formatura</option>
+              <option value="plane">Avião</option>
+              <option value="scale">Balança (OAB)</option>
+              <option value="piggy-bank">Cofrinho</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="NexusApp.quickActions.addNew()" class="tap-scale w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold">
+          Adicionar Novo Botão de 1 Toque
+        </button>
+      </div>
+
+      <!-- Lista Atual de Ações Rápidas -->
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Botões Atuais</label>
+        <div id="quickActionsManageList" class="space-y-1.5 max-h-44 overflow-y-auto custom-scrollbar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Novo / Editar Hábito Personalizável -->
+  <div id="newHabitModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-surface-100 border border-surface-border w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-surface-border">
+        <h3 class="text-sm font-bold text-white" id="habitModalTitle">Cadastrar Novo Hábito</h3>
+        <button onclick="NexusApp.habits.closeNewModal()" class="p-1 rounded-lg bg-surface-200 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Nome do Hábito</label>
+          <input id="habitNameInput" type="text" placeholder="Ex: Leitura diária, Beber Água, Treino..." class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Meta Diária</label>
+            <input id="habitGoalInput" type="number" min="1" value="5" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Unidade</label>
+            <input id="habitUnitInput" type="text" placeholder="copos, páginas, min" value="copos" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Tipo de Hábito</label>
+          <select id="habitTypeInput" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+            <option value="positive">Construção Positiva (ex: Exercício, Água, Leitura)</option>
+            <option value="reduction">Substituição / Troca de Impulso (ex: Parar Vício)</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="NexusApp.habits.closeNewModal()" class="flex-1 py-2.5 rounded-xl bg-surface-200 text-slate-300 text-xs font-semibold">Cancelar</button>
+        <button onclick="NexusApp.habits.saveNewHabit()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white text-xs font-semibold">Salvar Hábito</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Configurar Meta da Caixinha -->
+  <div id="savingsConfigModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-surface-100 border border-surface-border w-full max-w-xs rounded-2xl p-5 space-y-4">
+      <h3 class="text-sm font-bold text-white">Definir Meta da Caixinha</h3>
+      <div>
+        <label class="block text-xs font-medium text-slate-300 mb-1">Meta Desejada (R$)</label>
+        <input id="savingsTargetInput" type="number" step="50" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+      </div>
+      <div class="flex gap-2">
+        <button onclick="document.getElementById('savingsConfigModal').classList.add('hidden')" class="flex-1 py-2 rounded-xl bg-surface-200 text-slate-300 text-xs font-semibold">Cancelar</button>
+        <button onclick="NexusApp.savings.saveConfig()" class="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. Modal Deslize -->
+  <div id="slipModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-surface-100 border border-surface-border w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-surface-border">
+        <h3 class="text-sm font-bold text-white">Registrar Deslize de Impulso</h3>
+        <button onclick="NexusApp.closeSlideOverDeslize()" class="p-1 rounded-lg bg-surface-200 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-300 mb-1.5">Gatilho Principal</label>
+        <div class="grid grid-cols-2 gap-2" id="triggerTagSelector">
+          <button type="button" onclick="NexusApp.habits.selectTriggerTag(this, 'Estresse / Trabalho')" class="trigger-btn text-left p-2 rounded-xl bg-surface-200 border border-transparent text-xs text-slate-200">😤 Estresse / Pressão</button>
+          <button type="button" onclick="NexusApp.habits.selectTriggerTag(this, 'Tédio / Ociosidade')" class="trigger-btn text-left p-2 rounded-xl bg-surface-200 border border-transparent text-xs text-slate-200">🥱 Tédio / Espera</button>
+          <button type="button" onclick="NexusApp.habits.selectTriggerTag(this, 'Social / Bar')" class="trigger-btn text-left p-2 rounded-xl bg-surface-200 border border-transparent text-xs text-slate-200">🍻 Social / Bar</button>
+          <button type="button" onclick="NexusApp.habits.selectTriggerTag(this, 'Pós Café / Almoço')" class="trigger-btn text-left p-2 rounded-xl bg-surface-200 border border-transparent text-xs text-slate-200">☕ Pós Café / Refeição</button>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-300 mb-1">Notas / O que melhorar na próxima vez?</label>
+        <input id="slipNotesInput" type="text" placeholder="Ex: Deixar garrafa de água à mão..." class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="NexusApp.closeSlideOverDeslize()" class="flex-1 py-2.5 rounded-xl bg-surface-200 text-slate-300 text-xs font-semibold">Cancelar</button>
+        <button onclick="NexusApp.habits.saveSlip()" class="flex-1 py-2.5 rounded-xl bg-rose-600 text-white text-xs font-semibold">Salvar Registro</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Modal Novo Curso -->
+  <div id="courseModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-surface-100 border border-surface-border w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-surface-border">
+        <h3 class="text-sm font-bold text-white">Cadastrar Novo Curso</h3>
+        <button onclick="NexusApp.courses.closeAddModal()" class="p-1 rounded-lg bg-surface-200 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Título do Curso</label>
+          <input id="courseTitleInput" type="text" placeholder="Ex: Pós em Arquitetura de Software" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Instituição / Plataforma</label>
+          <input id="coursePlatformInput" type="text" placeholder="Ex: Coursera, Alura, FIAP" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Total de Aulas Planejadas</label>
+          <input id="courseTotalInput" type="number" value="30" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+        </div>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="NexusApp.courses.closeAddModal()" class="flex-1 py-2.5 rounded-xl bg-surface-200 text-slate-300 text-xs font-semibold">Cancelar</button>
+        <button onclick="NexusApp.courses.saveNewCourse()" class="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold">Cadastrar Curso</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Modal Nova Viagem -->
+  <div id="tripModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-surface-100 border border-surface-border w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-surface-border">
+        <h3 class="text-sm font-bold text-white">Cadastrar Nova Viagem</h3>
+        <button onclick="NexusApp.trips.closeAddModal()" class="p-1 rounded-lg bg-surface-200 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Destino</label>
+          <input id="tripDestinationInput" type="text" placeholder="Ex: Gramado - RS" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Período / Datas</label>
+          <input id="tripDatesInput" type="text" placeholder="Ex: 10 a 16 de Novembro" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Participantes (separados por vírgula)</label>
+          <input id="tripParticipantsInput" type="text" placeholder="Ex: Eu, Carlos, Beatriz" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+        </div>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="NexusApp.trips.closeAddModal()" class="flex-1 py-2.5 rounded-xl bg-surface-200 text-slate-300 text-xs font-semibold">Cancelar</button>
+        <button onclick="NexusApp.trips.saveNewTrip()" class="flex-1 py-2.5 rounded-xl bg-amber-600 text-white text-xs font-semibold">Salvar Viagem</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastBox" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 hidden bg-surface-100 border border-surface-border text-white px-4 py-2.5 rounded-2xl shadow-2xl text-xs flex items-center gap-2">
+    <i id="toastIcon" data-lucide="info" class="w-4 h-4 text-brand-400"></i>
+    <span id="toastMsg">Mensagem</span>
+  </div>
+
+  <!-- DRAWER / MENU FLUTUANTE DE MAIS OPÇÕES -->
+  <div id="moreMenuDrawer" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-end justify-center p-0" onclick="NexusApp.router.closeMoreMenu(event)">
+    <div class="bg-surface-100 border-t border-surface-border w-full max-w-lg rounded-t-3xl p-5 space-y-3" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between pb-2 border-b border-surface-border">
+        <h3 class="text-sm font-bold text-white">Mais Ferramentas & Módulos</h3>
+        <button onclick="NexusApp.router.toggleMoreMenu()" class="p-1.5 rounded-lg bg-surface-200 text-slate-400"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="grid grid-cols-3 gap-2.5 pt-1">
+        <button onclick="NexusApp.router.go('courses'); NexusApp.router.toggleMoreMenu()" class="tap-scale flex flex-col items-center justify-center p-3.5 rounded-2xl bg-surface-200 border border-surface-border hover:bg-surface-300">
+          <i data-lucide="graduation-cap" class="w-6 h-6 text-indigo-400 mb-1.5"></i>
+          <span class="text-xs font-semibold text-slate-200">Cursos</span>
+        </button>
+        <button onclick="NexusApp.router.go('trips'); NexusApp.router.toggleMoreMenu()" class="tap-scale flex flex-col items-center justify-center p-3.5 rounded-2xl bg-surface-200 border border-surface-border hover:bg-surface-300">
+          <i data-lucide="palmtree" class="w-6 h-6 text-amber-400 mb-1.5"></i>
+          <span class="text-xs font-semibold text-slate-200">Viagens</span>
+        </button>
+        <button onclick="NexusApp.router.go('settings'); NexusApp.router.toggleMoreMenu()" class="tap-scale flex flex-col items-center justify-center p-3.5 rounded-2xl bg-surface-200 border border-surface-border hover:bg-surface-300">
+          <i data-lucide="settings" class="w-6 h-6 text-slate-400 mb-1.5"></i>
+          <span class="text-xs font-semibold text-slate-200">Ajustes</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= BARRA DE NAVEGAÇÃO INFERIOR ERGONÔMICA (5 ITENS FIXOS) ================= -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-surface-50/95 backdrop-blur-lg border-t border-surface-border safe-bottom">
+    <div class="max-w-md mx-auto grid grid-cols-5 px-2 py-1.5 gap-1">
+      <button onclick="NexusApp.router.go('dashboard')" id="nav-dashboard" class="nav-btn py-1 flex flex-col items-center justify-center text-brand-400">
+        <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+        <span class="text-[10px] font-semibold mt-1">Hoje</span>
+      </button>
+
+      <button onclick="NexusApp.router.go('habits')" id="nav-habits" class="nav-btn py-1 flex flex-col items-center justify-center text-slate-400">
+        <i data-lucide="activity" class="w-5 h-5"></i>
+        <span class="text-[10px] font-semibold mt-1">Hábitos</span>
+      </button>
+
+      <button onclick="NexusApp.router.go('checklists')" id="nav-checklists" class="nav-btn py-1 flex flex-col items-center justify-center text-slate-400">
+        <i data-lucide="list-checks" class="w-5 h-5"></i>
+        <span class="text-[10px] font-semibold mt-1">Rotinas</span>
+      </button>
+
+      <button onclick="NexusApp.router.go('calculators')" id="nav-calculators" class="nav-btn py-1 flex flex-col items-center justify-center text-slate-400">
+        <i data-lucide="calculator" class="w-5 h-5"></i>
+        <span class="text-[10px] font-semibold mt-1">Cálculos</span>
+      </button>
+
+      <button onclick="NexusApp.router.toggleMoreMenu()" id="nav-more" class="nav-btn py-1 flex flex-col items-center justify-center text-slate-400">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+        <span class="text-[10px] font-semibold mt-1">Mais</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ================= LÓGICA E ESTADO CENTRALIZADO ================= -->
+  <script>
+    const DEFAULT_APP_STATE = {
+      version: "3.2.0",
+      auth: {
+        username: "admin",
+        password: "123",
+        requirePin: false, // Inicia direto por padrão para zero fricção
+        isLoggedIn: true
+      },
+      tripFilter: {
+        category: "all",
+        search: ""
+      },
+      quickActions: [
+        { id: 1, title: "+1 Copo d'Água", action: "habit:first", icon: "zap" },
+        { id: 2, title: "+Novo Curso", action: "modal:course", icon: "graduation-cap" },
+        { id: 3, title: "Planejar Viagem", action: "tab:trips", icon: "plane" },
+        { id: 4, title: "Calc. Honorários OAB", action: "tab:calculators", icon: "scale" }
+      ],
+      user: {
+        streakDays: 7
+      },
+      habitsList: [
+        {
+          id: 1,
+          name: "Gole Limpo (Trocar Impulso por Água)",
+          unit: "copos",
+          dailyGoal: 8,
+          todayValue: 4,
+          type: "reduction",
+          history: [4, 6, 8, 8, 7, 5, 4]
+        },
+        {
+          id: 2,
+          name: "Leitura Jurídica / Livros",
+          unit: "páginas",
+          dailyGoal: 15,
+          todayValue: 15,
+          type: "positive",
+          history: [10, 15, 20, 12, 15, 18, 15]
+        }
+      ],
+      slips: [
+        { id: 1, date: "Ontem, 16:40", trigger: "Estresse / Trabalho", note: "Pausa após prazo difícil." }
+      ],
+      checklists: [
+        { id: 101, title: "Beber 500ml de água logo ao acordar", done: true },
+        { id: 102, title: "Revisar aula pendente do curso ativo", done: false },
+        { id: 103, title: "Conferir intimações e prazos do dia", done: false }
+      ],
+      courses: [
+        {
+          id: 201,
+          title: "Engenharia de Software & IA",
+          platform: "Alura",
+          totalLessons: 40,
+          completedLessons: 22,
+          notes: "Focar em microsserviços e bancos distribuídos."
+        }
+      ],
+      trips: {
+        activeTripId: 301,
+        items: [
+          {
+            id: 301,
+            destination: "Serra Gaúcha & Gramado",
+            dates: "12 a 17 de Novembro",
+            participants: ["Eu", "Lucas", "Mariana"],
+            itinerary: [
+              { id: 1, time: "Dia 1 - 09:00", activity: "Check-in Hotel e Café Colonial", done: true },
+              { id: 2, time: "Dia 2 - 14:00", activity: "Tour pelas Vinícolas", done: false }
+            ],
+            expenses: [
+              { id: 11, desc: "Aluguel do Carro", category: "Transporte", amount: 620.00, payer: "Eu" },
+              { id: 12, desc: "Reserva Hotel", category: "Hospedagem", amount: 1350.00, payer: "Lucas" },
+              { id: 13, desc: "Jantar Típico", category: "Alimentação", amount: 280.00, payer: "Mariana" }
+            ]
+          }
+        ]
+      },
+      savings: {
+        goal: 5000,
+        balance: 1450,
+        history: [
+          { id: 1, date: "01/11", desc: "Aporte Inicial de Reserva", type: "deposit", amount: 1000 },
+          { id: 2, date: "03/11", desc: "Economia Semanal", type: "deposit", amount: 450 }
+        ]
+      },
+      calculators: {
+        oab: { causeValue: 25000, percent: 20, retainer: 2500, service: "civil_inicial" },
+        external: { hourlyRate: 120, hoursSpent: 2.5, distanceKm: 45, consumption: 11, fuelPrice: 5.89, extras: 25 }
+      }
+    };
+
+    let AppState = JSON.parse(JSON.stringify(DEFAULT_APP_STATE));
+    let selectedTrigger = "Estresse / Trabalho";
+    let audioCtx = null;
+
+    const NexusApp = {
+      init() {
+        this.storage.load();
+        this.auth.checkSession();
+        this.router.init();
+        this.renderAll();
+        this.updateHeaderDate();
+        lucide.createIcons();
+      },
+
+      // FEEDBACK SENSORIAL: Web Audio API (Sons de Gota d'Água) + Háptico (Vibração)
+      sensoryFeedback(type = 'water') {
+        // 1. Vibração háptica
+        if ('vibrate' in navigator) {
+          try { navigator.vibrate(type === 'water' ? [30, 20, 40] : 25); } catch (e) {}
+        }
+
+        // 2. Web Audio API sintetizado
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return;
+          if (!audioCtx) audioCtx = new AudioContextClass();
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+
+          const now = audioCtx.currentTime;
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+
+          if (type === 'water') {
+            // Curva rápida senoidal simulando gota d'água caindo
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(540, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+            osc.frequency.exponentialRampToValueAtTime(420, now + 0.16);
+
+            gain.gain.setValueAtTime(0.35, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.18);
+          } else {
+            // Clique suave de confirmação
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(440, now);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.06);
+          }
+        } catch (e) {
+          // Navegador sem suporte a áudio
+        }
+      },
+
+      updateHeaderDate() {
+        const dateEl = document.getElementById('headerDate');
+        const options = { weekday: 'long', day: 'numeric', month: 'short' };
+        dateEl.textContent = new Date().toLocaleDateString('pt-BR', options);
+      },
+
+      // 1. AUTENTICAÇÃO TOLERANTE COM OPÇÃO DE DESATIVAR
+      auth: {
+        checkSession() {
+          const authScreen = document.getElementById('authScreen');
+          const lockBtn = document.getElementById('headerLockBtn');
+          const toggle = document.getElementById('settingsRequirePinToggle');
+          
+          if (toggle) toggle.checked = !!AppState.auth.requirePin;
+
+          if (AppState.auth.requirePin && !AppState.auth.isLoggedIn) {
+            authScreen.classList.remove('hidden');
+            if (lockBtn) lockBtn.classList.remove('hidden');
+          } else {
+            authScreen.classList.add('hidden');
+            if (lockBtn) {
+              if (AppState.auth.requirePin) lockBtn.classList.remove('hidden');
+              else lockBtn.classList.add('hidden');
+            }
+          }
+
+          const userField = document.getElementById('settingsUser');
+          const passField = document.getElementById('settingsPass');
+          if (userField) userField.value = AppState.auth.username || 'admin';
+          if (passField) passField.value = AppState.auth.password || '123';
+        },
+        toggleRequirePin(enabled) {
+          AppState.auth.requirePin = enabled;
+          NexusApp.storage.save();
+          this.checkSession();
+          NexusApp.showToast(enabled ? "Bloqueio por senha ativado." : "App agora abre direto sem senha.", "shield-check");
+        },
+        handleLogin(e) {
+          if (e) e.preventDefault();
+          const userIn = (document.getElementById('loginUsername').value || '').trim().toLowerCase();
+          const passIn = (document.getElementById('loginPassword').value || '').trim();
+          const expectedUser = (AppState.auth.username || 'admin').trim().toLowerCase();
+          const expectedPass = (AppState.auth.password || '123').trim();
+
+          if (userIn === expectedUser && passIn === expectedPass) {
+            AppState.auth.isLoggedIn = true;
+            NexusApp.storage.save();
+            document.getElementById('authScreen').classList.add('hidden');
+            document.getElementById('loginErrorMsg').classList.add('hidden');
+            NexusApp.showToast(`Bem-vindo, ${AppState.auth.username}!`, 'shield-check');
+          } else {
+            document.getElementById('loginErrorMsg').classList.remove('hidden');
+          }
+        },
+        lockApp() {
+          AppState.auth.isLoggedIn = false;
+          NexusApp.storage.save();
+          this.checkSession();
+          NexusApp.showToast('App bloqueado.', 'lock');
+        },
+        saveCredentials() {
+          const newUser = document.getElementById('settingsUser').value.trim();
+          const newPass = document.getElementById('settingsPass').value.trim();
+          if (!newUser || !newPass) {
+            NexusApp.showToast('Usuário e senha não podem ser vazios.', 'alert-triangle');
+            return;
+          }
+          AppState.auth.username = newUser;
+          AppState.auth.password = newPass;
+          NexusApp.storage.save();
+          NexusApp.showToast('Credenciais atualizadas com sucesso!', 'check');
+        }
+      },
+
+      // 2. ROTEAMENTO OTIMIZADO (5 ABAS PRINCIPAIS + GAVETA MAIS)
+      router: {
+        activeTab: 'dashboard',
+        toggleMoreMenu() {
+          const drawer = document.getElementById('moreMenuDrawer');
+          drawer.classList.toggle('hidden');
+          lucide.createIcons();
+        },
+        closeMoreMenu(e) {
+          const drawer = document.getElementById('moreMenuDrawer');
+          drawer.classList.add('hidden');
+        },
+        go(tabName) {
+          const tabs = ['dashboard', 'habits', 'checklists', 'courses', 'trips', 'calculators', 'settings'];
+          tabs.forEach(t => {
+            const view = document.getElementById(`view-${t}`);
+            const btn = document.getElementById(`nav-${t}`);
+            if (t === tabName) {
+              if (view) view.classList.remove('hidden');
+              if (btn) {
+                btn.classList.add('text-brand-400');
+                btn.classList.remove('text-slate-400');
+              }
+            } else {
+              if (view) view.classList.add('hidden');
+              if (btn) {
+                btn.classList.remove('text-brand-400');
+                btn.classList.add('text-slate-400');
+              }
+            }
+          });
+          const moreBtn = document.getElementById('nav-more');
+          if (['courses', 'trips', 'settings'].includes(tabName)) {
+            if (moreBtn) moreBtn.classList.add('text-brand-400');
+          } else {
+            if (moreBtn) moreBtn.classList.remove('text-brand-400');
+          }
+
+          this.activeTab = tabName;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          lucide.createIcons();
+        },
+        init() {
+          this.go('dashboard');
+        }
+      },
+
+      // 3. AÇÕES RÁPIDAS DE 1 TOQUE (PERSONALIZÁVEIS)
+      quickActions: {
+        openModal() {
+          document.getElementById('quickActionModal').classList.remove('hidden');
+          NexusApp.renderQuickActionsManage();
+        },
+        closeModal() {
+          document.getElementById('quickActionModal').classList.add('hidden');
+        },
+        execute(action) {
+          if (action.startsWith('tab:')) {
+            const tab = action.split(':')[1];
+            NexusApp.router.go(tab);
+          } else if (action === 'modal:course') {
+            NexusApp.router.go('courses');
+            NexusApp.courses.openAddModal();
+          } else if (action === 'modal:trip') {
+            NexusApp.router.go('trips');
+            NexusApp.trips.openAddModal();
+          } else if (action === 'habit:first') {
+            if (AppState.habitsList.length > 0) {
+              NexusApp.habits.increment(AppState.habitsList[0].id, 1);
+            } else {
+              NexusApp.router.go('habits');
+            }
+          }
+        },
+        addNew() {
+          const title = document.getElementById('qaTitleInput').value.trim();
+          const action = document.getElementById('qaActionType').value;
+          const icon = document.getElementById('qaIconType').value;
+
+          if (!title) {
+            NexusApp.showToast('Insira o título do botão.', 'alert-triangle');
+            return;
+          }
+
+          AppState.quickActions.push({
+            id: Date.now(),
+            title,
+            action,
+            icon
+          });
+          NexusApp.storage.save();
+          document.getElementById('qaTitleInput').value = '';
+          NexusApp.renderDashboard();
+          NexusApp.renderQuickActionsManage();
+          NexusApp.showToast('Novo atalho de 1 toque criado!', 'check');
+        },
+        remove(id) {
+          AppState.quickActions = AppState.quickActions.filter(qa => qa.id !== id);
+          NexusApp.storage.save();
+          NexusApp.renderDashboard();
+          NexusApp.renderQuickActionsManage();
+        }
+      },
+
+      // 4. HÁBITOS TOTALMENTE PERSONALIZÁVEIS, FEEDBACK SENSORIAL & GRÁFICOS
+      habits: {
+        openNewModal() {
+          document.getElementById('newHabitModal').classList.remove('hidden');
+        },
+        closeNewModal() {
+          document.getElementById('newHabitModal').classList.add('hidden');
+        },
+        saveNewHabit() {
+          const name = document.getElementById('habitNameInput').value.trim();
+          const goal = parseInt(document.getElementById('habitGoalInput').value) || 1;
+          const unit = document.getElementById('habitUnitInput').value.trim() || 'vezes';
+          const type = document.getElementById('habitTypeInput').value;
+
+          if (!name) {
+            NexusApp.showToast('Informe o nome do hábito.', 'alert-triangle');
+            return;
+          }
+
+          const newHabit = {
+            id: Date.now(),
+            name,
+            unit,
+            dailyGoal: goal,
+            todayValue: 0,
+            type,
+            history: [0, 0, 0, 0, 0, 0, 0]
+          };
+
+          AppState.habitsList.push(newHabit);
+          NexusApp.storage.save();
+          NexusApp.habits.closeNewModal();
+          document.getElementById('habitNameInput').value = '';
+          NexusApp.renderHabits();
+          NexusApp.renderDashboard();
+          NexusApp.showToast('Hábito cadastrado com sucesso!', 'target');
+        },
+        increment(id, delta) {
+          const habit = AppState.habitsList.find(h => h.id === id);
+          if (!habit) return;
+
+          habit.todayValue = Math.max(0, habit.todayValue + delta);
+          if (!Array.isArray(habit.history) || habit.history.length === 0) {
+            habit.history = [0, 0, 0, 0, 0, 0, habit.todayValue];
+          } else {
+            habit.history[habit.history.length - 1] = habit.todayValue;
+          }
+
+          // Dispara feedback tátil e sonoro se for incremento
+          if (delta > 0) {
+            NexusApp.sensoryFeedback(habit.unit.toLowerCase().includes('copo') || habit.name.toLowerCase().includes('água') ? 'water' : 'click');
+          }
+
+          NexusApp.storage.save();
+          NexusApp.renderHabits();
+          NexusApp.renderDashboard();
+          NexusApp.showToast(`Progresso: ${habit.todayValue} ${habit.unit}`, 'zap');
+        },
+        remove(id) {
+          AppState.habitsList = AppState.habitsList.filter(h => h.id !== id);
+          NexusApp.storage.save();
+          NexusApp.renderHabits();
+          NexusApp.renderDashboard();
+          NexusApp.showToast('Hábito excluído.', 'trash-2');
+        },
+        selectTriggerTag(btnElement, tag) {
+          selectedTrigger = tag;
+          document.querySelectorAll('.trigger-btn').forEach(b => {
+            b.classList.remove('border-rose-500', 'bg-rose-950/40');
+          });
+          btnElement.classList.add('border-rose-500', 'bg-rose-950/40');
+        },
+        saveSlip() {
+          const notesInput = document.getElementById('slipNotesInput');
+          const noteText = notesInput.value.trim() || "Sem anotações.";
+          const nowStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+          const newSlip = {
+            id: Date.now(),
+            date: `Hoje, ${nowStr}`,
+            trigger: selectedTrigger,
+            note: noteText
+          };
+
+          if (!AppState.slips) AppState.slips = [];
+          AppState.slips.unshift(newSlip);
+          if (AppState.slips.length > 20) AppState.slips.pop();
+
+          NexusApp.storage.save();
+          NexusApp.renderHabits();
+          NexusApp.closeSlideOverDeslize();
+          notesInput.value = '';
+          NexusApp.showToast("Gatilho registrado com sucesso.", "alert-circle");
+        },
+        removeSlip(id) {
+          AppState.slips = AppState.slips.filter(s => s.id !== id);
+          NexusApp.storage.save();
+          NexusApp.renderHabits();
+        }
+      },
+
+      // 5. CAIXINHA FINANCEIRA
+      savings: {
+        openConfigModal() {
+          document.getElementById('savingsTargetInput').value = AppState.savings.goal;
+          document.getElementById('savingsConfigModal').classList.remove('hidden');
+        },
+        saveConfig() {
+          const newGoal = parseFloat(document.getElementById('savingsTargetInput').value) || 1000;
+          AppState.savings.goal = newGoal;
+          NexusApp.storage.save();
+          document.getElementById('savingsConfigModal').classList.add('hidden');
+          NexusApp.renderSavings();
+          NexusApp.renderDashboard();
+          NexusApp.showToast('Nova meta financeira salva!', 'check');
+        },
+        addMovement(type) {
+          const amountIn = document.getElementById('savingsAmountInput');
+          const descIn = document.getElementById('savingsDescInput');
+          const val = parseFloat(amountIn.value);
+          const desc = descIn.value.trim() || (type === 'deposit' ? 'Aporte de Reserva' : 'Resgate emergencial');
+
+          if (!val || val <= 0) {
+            NexusApp.showToast('Insira um valor numérico válido.', 'alert-triangle');
+            return;
+          }
+
+          if (type === 'withdraw' && val > AppState.savings.balance) {
+            NexusApp.showToast('Saldo insuficiente na caixinha.', 'alert-triangle');
+            return;
+          }
+
+          if (type === 'deposit') {
+            AppState.savings.balance += val;
+          } else {
+            AppState.savings.balance -= val;
+          }
+
+          const now = new Date();
+          const dateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+          AppState.savings.history.unshift({
+            id: Date.now(),
+            date: dateStr,
+            desc,
+            type,
+            amount: val
+          });
+
+          NexusApp.sensoryFeedback('click');
+          NexusApp.storage.save();
+          amountIn.value = '';
+          descIn.value = '';
+          NexusApp.renderSavings();
+          NexusApp.renderDashboard();
+          NexusApp.showToast(type === 'deposit' ? 'Depósito registrado!' : 'Resgate computado!', 'piggy-bank');
+        }
+      },
+
+      // 6. CALCULADORAS OAB & ATIVIDADES EXTERNAS
+      calculators: {
+        onServiceChange() {
+          const sel = document.getElementById('oabServiceType');
+          const opt = sel.options[sel.selectedIndex];
+          const baseSug = parseFloat(opt.getAttribute('data-base')) || 0;
+          const pctSug = parseFloat(opt.getAttribute('data-pct')) || 20;
+
+          if (baseSug > 0) {
+            document.getElementById('oabRetainer').value = baseSug;
+          }
+          if (pctSug >= 0) {
+            document.getElementById('oabPercent').value = pctSug;
+          }
+          this.updateOabCalc();
+        },
+        updateOabCalc() {
+          const sel = document.getElementById('oabServiceType');
+          const opt = sel.options[sel.selectedIndex];
+          const baseSug = parseFloat(opt.getAttribute('data-base')) || 0;
+          
+          // Valores agora totalmente editáveis pelo usuário (sem travar)
+          const causeVal = parseFloat(document.getElementById('oabCauseValue').value) || 0;
+          const pct = parseFloat(document.getElementById('oabPercent').value) || 0;
+          const retainer = parseFloat(document.getElementById('oabRetainer').value) || 0;
+
+          const successVal = (causeVal * (pct / 100));
+          const totalHonorarios = retainer + successVal;
+
+          document.getElementById('oabPisoDisplay').textContent = baseSug > 0 
+            ? `R$ ${baseSug.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+            : 'Personalizado';
+          document.getElementById('oabSuccessDisplay').textContent = `R$ ${successVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+          document.getElementById('oabTotalDisplay').textContent = `R$ ${totalHonorarios.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+          AppState.calculators.oab = { causeValue: causeVal, percent: pct, retainer, service: sel.value };
+          NexusApp.storage.saveSilent();
+        },
+        copyOabProposal() {
+          const sel = document.getElementById('oabServiceType');
+          const serviceName = sel.options[sel.selectedIndex].text.split('(')[0].trim();
+          const causeVal = parseFloat(document.getElementById('oabCauseValue').value) || 0;
+          const pct = parseFloat(document.getElementById('oabPercent').value) || 0;
+          const retainer = parseFloat(document.getElementById('oabRetainer').value) || 0;
+          const successVal = (causeVal * (pct / 100));
+          const totalEstimado = retainer + successVal;
+
+          const textToCopy = 
+`*PROPOSTA DE HONORÁRIOS ADVOCATÍCIOS*
+----------------------------------------
+*Atuação:* ${serviceName}
+*Valor da Causa / Proveito:* R$ ${causeVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+
+*Condições de Pagamento:*
+• *Honorários Iniciais (Pró-Labore):* R$ ${retainer.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+• *Honorários de Êxito:* ${pct}% sobre o benefício econômico auferido (estimativa: R$ ${successVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})
+• *Estimativa Total:* R$ ${totalEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+
+_Valores em conformidade com as diretrizes e piso de referência da Tabela de Honorários da OAB._`;
+
+          // Compatibilidade com iFrames e navegadores
+          try {
+            const textarea = document.createElement('textarea');
+            textarea.value = textToCopy;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            NexusApp.sensoryFeedback('click');
+            NexusApp.showToast('Proposta copiada para o WhatsApp!', 'copy');
+          } catch (e) {
+            NexusApp.showToast('Erro ao copiar proposta.', 'alert-triangle');
+          }
+        },
+        updateExtCost() {
+          const hourlyRate = parseFloat(document.getElementById('extHourlyRate').value) || 0;
+          const hours = parseFloat(document.getElementById('extHoursSpent').value) || 0;
+          const distKm = parseFloat(document.getElementById('extDistanceKm').value) || 0;
+          const cons = parseFloat(document.getElementById('extConsumption').value) || 1;
+          const fuelP = parseFloat(document.getElementById('extFuelPrice').value) || 0;
+          const extras = parseFloat(document.getElementById('extExtras').value) || 0;
+
+          const liters = distKm / (cons > 0 ? cons : 1);
+          const fuelCost = liters * fuelP;
+          const timeCost = hours * hourlyRate;
+          const rawCost = fuelCost + timeCost + extras;
+          const suggestedFinal = rawCost * 1.25;
+
+          document.getElementById('extFuelCostDisplay').textContent = `R$ ${fuelCost.toFixed(2)}`;
+          document.getElementById('extTimeCostDisplay').textContent = `R$ ${timeCost.toFixed(2)}`;
+          document.getElementById('extExtrasDisplay').textContent = `R$ ${extras.toFixed(2)}`;
+          document.getElementById('extRawCostDisplay').textContent = `R$ ${rawCost.toFixed(2)}`;
+          document.getElementById('extSuggestedDisplay').textContent = `R$ ${suggestedFinal.toFixed(2)}`;
+
+          AppState.calculators.external = { hourlyRate, hoursSpent: hours, distanceKm: distKm, consumption: cons, fuelPrice: fuelP, extras };
+          NexusApp.storage.saveSilent();
+        }
+      },
+
+      // 7. CHECKLISTS, CURSOS E VIAGENS COM FILTRO/CATEGORIAS
+      checklists: {
+        toggleItem(id) {
+          const item = AppState.checklists.find(c => c.id === id);
+          if (item) {
+            item.done = !item.done;
+            NexusApp.sensoryFeedback('click');
+            NexusApp.storage.save();
+            NexusApp.renderChecklists();
+            NexusApp.renderDashboard();
+          }
+        },
+        addItem() {
+          const input = document.getElementById('newChecklistInput');
+          const text = input.value.trim();
+          if (!text) return;
+
+          AppState.checklists.push({
+            id: Date.now(),
+            title: text,
+            done: false
+          });
+          NexusApp.storage.save();
+          input.value = '';
+          NexusApp.renderChecklists();
+          NexusApp.renderDashboard();
+          NexusApp.showToast("Rotina adicionada!", "check");
+        },
+        removeItem(id) {
+          AppState.checklists = AppState.checklists.filter(c => c.id !== id);
+          NexusApp.storage.save();
+          NexusApp.renderChecklists();
+          NexusApp.renderDashboard();
+        },
+        resetDaily() {
+          AppState.checklists.forEach(item => item.done = false);
+          NexusApp.storage.save();
+          NexusApp.renderChecklists();
+          NexusApp.renderDashboard();
+          NexusApp.showToast("Rotinas diárias resetadas!", "rotate-ccw");
+        }
+      },
+
+      courses: {
+        openAddModal() {
+          document.getElementById('courseModal').classList.remove('hidden');
+        },
+        closeAddModal() {
+          document.getElementById('courseModal').classList.add('hidden');
+        },
+        saveNewCourse() {
+          const title = document.getElementById('courseTitleInput').value.trim();
+          const platform = document.getElementById('coursePlatformInput').value.trim() || 'Geral';
+          const total = parseInt(document.getElementById('courseTotalInput').value) || 10;
+
+          if (!title) {
+            NexusApp.showToast('Insira o título do curso.', 'alert-triangle');
+            return;
+          }
+
+          AppState.courses.unshift({
+            id: Date.now(),
+            title,
+            platform,
+            totalLessons: total,
+            completedLessons: 0,
+            notes: ''
+          });
+
+          NexusApp.storage.save();
+          NexusApp.courses.closeAddModal();
+          document.getElementById('courseTitleInput').value = '';
+          document.getElementById('coursePlatformInput').value = '';
+          NexusApp.renderCourses();
+          NexusApp.renderDashboard();
+          NexusApp.showToast('Curso cadastrado!', 'graduation-cap');
+        },
+        changeProgress(courseId, delta) {
+          const course = AppState.courses.find(c => c.id === courseId);
+          if (course) {
+            course.completedLessons = Math.max(0, Math.min(course.totalLessons, course.completedLessons + delta));
+            if (delta > 0) NexusApp.sensoryFeedback('click');
+            NexusApp.storage.save();
+            NexusApp.renderCourses();
+            NexusApp.renderDashboard();
+          }
+        },
+        updateNotes(courseId, newNotes) {
+          const course = AppState.courses.find(c => c.id === courseId);
+          if (course) {
+            course.notes = newNotes;
+            NexusApp.storage.saveSilent();
+          }
+        },
+        removeCourse(courseId) {
+          AppState.courses = AppState.courses.filter(c => c.id !== courseId);
+          NexusApp.storage.save();
+          NexusApp.renderCourses();
+          NexusApp.renderDashboard();
+          NexusApp.showToast('Curso removido.', 'trash-2');
+        }
+      },
+
+      trips: {
+        openAddModal() {
+          document.getElementById('tripModal').classList.remove('hidden');
+        },
+        closeAddModal() {
+          document.getElementById('tripModal').classList.add('hidden');
+        },
+        saveNewTrip() {
+          const destination = document.getElementById('tripDestinationInput').value.trim();
+          const dates = document.getElementById('tripDatesInput').value.trim() || 'A definir';
+          const participantsRaw = document.getElementById('tripParticipantsInput').value.trim();
+
+          if (!destination) {
+            NexusApp.showToast('Informe o destino da viagem.', 'alert-triangle');
+            return;
+          }
+
+          const participants = participantsRaw
+            ? participantsRaw.split(',').map(p => p.trim()).filter(Boolean)
+            : ['Eu'];
+
+          const newTrip = {
+            id: Date.now(),
+            destination,
+            dates,
+            participants,
+            itinerary: [],
+            expenses: []
+          };
+
+          AppState.trips.items.unshift(newTrip);
+          AppState.trips.activeTripId = newTrip.id;
+          NexusApp.storage.save();
+          NexusApp.trips.closeAddModal();
+          document.getElementById('tripDestinationInput').value = '';
+          document.getElementById('tripDatesInput').value = '';
+          document.getElementById('tripParticipantsInput').value = '';
+          NexusApp.renderTrips();
+          NexusApp.renderDashboard();
+          NexusApp.showToast('Viagem criada!', 'plane');
+        },
+        selectTrip(tripId) {
+          AppState.trips.activeTripId = Number(tripId);
+          NexusApp.storage.saveSilent();
+          NexusApp.renderTrips();
+        },
+        setFilterCategory(cat) {
+          AppState.tripFilter.category = cat;
+          NexusApp.renderTrips();
+        },
+        setSearch(query) {
+          AppState.tripFilter.search = query.toLowerCase();
+          NexusApp.renderTrips();
+        },
+        addItineraryItem() {
+          const trip = AppState.trips.items.find(t => t.id === AppState.trips.activeTripId);
+          if (!trip) return;
+          const timeInput = document.getElementById('tripItineraryTime');
+          const actInput = document.getElementById('tripItineraryAct');
+          const time = timeInput.value.trim() || 'Geral';
+          const activity = actInput.value.trim();
+
+          if (!activity) return;
+
+          trip.itinerary.push({ id: Date.now(), time, activity, done: false });
+          NexusApp.storage.save();
+          timeInput.value = '';
+          actInput.value = '';
+          NexusApp.renderTrips();
+        },
+        toggleItinerary(itemId) {
+          const trip = AppState.trips.items.find(t => t.id === AppState.trips.activeTripId);
+          if (!trip) return;
+          const item = trip.itinerary.find(i => i.id === itemId);
+          if (item) {
+            item.done = !item.done;
+            NexusApp.sensoryFeedback('click');
+            NexusApp.storage.save();
+            NexusApp.renderTrips();
+          }
+        },
+        removeItinerary(itemId) {
+          const trip = AppState.trips.items.find(t => t.id === AppState.trips.activeTripId);
+          if (!trip) return;
+          trip.itinerary = trip.itinerary.filter(i => i.id !== itemId);
+          NexusApp.storage.save();
+          NexusApp.renderTrips();
+        },
+        addExpense() {
+          const trip = AppState.trips.items.find(t => t.id === AppState.trips.activeTripId);
+          if (!trip) return;
+          const descInput = document.getElementById('tripExpDesc');
+          const amountInput = document.getElementById('tripExpAmount');
+          const payerSelect = document.getElementById('tripExpPayer');
+          const catSelect = document.getElementById('tripExpCat');
+
+          const desc = descInput.value.trim();
+          const amount = parseFloat(amountInput.value) || 0;
+          const payer = payerSelect.value || trip.participants[0] || 'Eu';
+          const category = catSelect.value || 'Geral';
+
+          if (!desc || amount <= 0) {
+            NexusApp.showToast('Informe a descrição e valor válido.', 'alert-triangle');
+            return;
+          }
+
+          trip.expenses.push({ id: Date.now(), desc, category, amount, payer });
+          NexusApp.storage.save();
+          descInput.value = '';
+          amountInput.value = '';
+          NexusApp.renderTrips();
+          NexusApp.renderDashboard();
+          NexusApp.showToast('Gasto registrado!', 'coins');
+        },
+        removeExpense(expId) {
+          const trip = AppState.trips.items.find(t => t.id === AppState.trips.activeTripId);
+          if (!trip) return;
+          trip.expenses = trip.expenses.filter(e => e.id !== expId);
+          NexusApp.storage.save();
+          NexusApp.renderTrips();
+          NexusApp.renderDashboard();
+        }
+      },
+
+      // 8. STORAGE & BACKUP
+      storage: {
+        save() {
+          localStorage.setItem('nexushub_full_state', JSON.stringify(AppState));
+          NexusApp.flashSaveBadge();
+        },
+        saveSilent() {
+          localStorage.setItem('nexushub_full_state', JSON.stringify(AppState));
+        },
+        load() {
+          const saved = localStorage.getItem('nexushub_full_state');
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              AppState = Object.assign({}, DEFAULT_APP_STATE, parsed);
+              if (!Array.isArray(AppState.habitsList)) AppState.habitsList = DEFAULT_APP_STATE.habitsList;
+              if (!Array.isArray(AppState.quickActions)) AppState.quickActions = DEFAULT_APP_STATE.quickActions;
+              if (!AppState.savings) AppState.savings = DEFAULT_APP_STATE.savings;
+              if (!AppState.tripFilter) AppState.tripFilter = DEFAULT_APP_STATE.tripFilter;
+            } catch (e) {
+              console.error("Erro ao ler localStorage.", e);
+            }
+          }
+        },
+        exportJSON() {
+          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(AppState, null, 2));
+          const dlAnchor = document.createElement('a');
+          const date = new Date().toISOString().slice(0, 10);
+          dlAnchor.setAttribute("href", dataStr);
+          dlAnchor.setAttribute("download", `nexushub_backup_${date}.json`);
+          dlAnchor.click();
+          NexusApp.showToast("Backup JSON exportado!", "download");
+        },
+        importJSON(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const imported = JSON.parse(e.target.result);
+              if (imported && (imported.habitsList || imported.habits)) {
+                AppState = Object.assign({}, DEFAULT_APP_STATE, imported);
+                NexusApp.storage.save();
+                NexusApp.renderAll();
+                NexusApp.showToast("Backup restaurado!", "check-circle");
+              } else {
+                NexusApp.showToast("Arquivo JSON inválido.", "alert-triangle");
+              }
+            } catch (err) {
+              NexusApp.showToast("Falha ao ler o arquivo JSON.", "alert-triangle");
+            }
+          };
+          reader.readAsText(file);
+        },
+        resetFactory() {
+          localStorage.removeItem('nexushub_full_state');
+          AppState = JSON.parse(JSON.stringify(DEFAULT_APP_STATE));
+          NexusApp.renderAll();
+          NexusApp.auth.checkSession();
+          NexusApp.showToast("App restaurado aos padrões.", "trash-2");
+        }
+      },
+
+      // 9. HELPERS VISUAIS E MODAIS
+      openSlideOverDeslize() {
+        document.getElementById('slipModal').classList.remove('hidden');
+      },
+      closeSlideOverDeslize() {
+        document.getElementById('slipModal').classList.add('hidden');
+      },
+      showToast(text, iconName = 'info') {
+        const box = document.getElementById('toastBox');
+        const msg = document.getElementById('toastMsg');
+        const icon = document.getElementById('toastIcon');
+        msg.textContent = text;
+        icon.setAttribute('data-lucide', iconName);
+        lucide.createIcons();
+        box.classList.remove('hidden');
+        setTimeout(() => box.classList.add('hidden'), 3000);
+      },
+      flashSaveBadge() {
+        const badge = document.getElementById('saveBadge');
+        badge.classList.remove('opacity-0');
+        setTimeout(() => badge.classList.add('opacity-0'), 1500);
+      },
+
+      // 10. RENDERIZADORES
+      renderAll() {
+        this.renderDashboard();
+        this.renderHabits();
+        this.renderChecklists();
+        this.renderCourses();
+        this.renderTrips();
+        this.renderSavings();
+        this.calculators.updateOabCalc();
+        this.calculators.updateExtCost();
+        lucide.createIcons();
+      },
+
+      renderDashboard() {
+        const totalHabits = AppState.habitsList.length;
+        let totalPct = 0;
+        AppState.habitsList.forEach(h => {
+          totalPct += Math.min(100, Math.round((h.todayValue / (h.dailyGoal || 1)) * 100));
+        });
+        const avgPct = totalHabits > 0 ? Math.round(totalPct / totalHabits) : 0;
+        document.getElementById('dashHabitsActiveCount').textContent = totalHabits;
+        document.getElementById('dashHabitsAvgProgress').textContent = `${avgPct}% do dia atingido`;
+
+        const totalTasks = AppState.checklists.length;
+        const doneTasks = AppState.checklists.filter(t => t.done).length;
+        const taskPct = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100);
+        document.getElementById('dashTasksPercent').textContent = `${taskPct}%`;
+        document.getElementById('dashTasksRatio').textContent = `(${doneTasks}/${totalTasks})`;
+        document.getElementById('dashTasksBar').style.width = `${taskPct}%`;
+
+        const activeCourses = AppState.courses.filter(c => c.completedLessons < c.totalLessons);
+        document.getElementById('dashActiveCourses').textContent = activeCourses.length;
+        if (activeCourses.length > 0) {
+          const first = activeCourses[0];
+          const coursePct = Math.round((first.completedLessons / first.totalLessons) * 100);
+          document.getElementById('dashCourseNextNote').textContent = `${first.title} (${coursePct}%)`;
+        } else {
+          document.getElementById('dashCourseNextNote').textContent = 'Todos os cursos concluídos!';
+        }
+
+        const bal = AppState.savings.balance || 0;
+        const goal = AppState.savings.goal || 1;
+        const savPct = Math.min(100, Math.round((bal / goal) * 100));
+        document.getElementById('dashSavingsBalance').textContent = `R$ ${bal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+        document.getElementById('dashSavingsGoalStatus').textContent = `${savPct}% da meta de R$ ${goal.toLocaleString('pt-BR')}`;
+
+        const qaGrid = document.getElementById('quickActionsGrid');
+        qaGrid.innerHTML = AppState.quickActions.map(qa => `
+          <button onclick="NexusApp.quickActions.execute('${qa.action}')" class="tap-scale flex items-center justify-center gap-2 py-3 px-3 rounded-xl bg-surface-200/80 hover:bg-surface-300/80 border border-surface-border text-slate-200 font-medium text-xs">
+            <i data-lucide="${qa.icon}" class="w-4 h-4 text-brand-400"></i>
+            <span class="truncate">${qa.title}</span>
+          </button>
+        `).join('');
+
+        lucide.createIcons();
+      },
+
+      renderQuickActionsManage() {
+        const list = document.getElementById('quickActionsManageList');
+        list.innerHTML = AppState.quickActions.map(qa => `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-surface-200 text-xs">
+            <div class="flex items-center gap-2">
+              <i data-lucide="${qa.icon}" class="w-4 h-4 text-brand-400"></i>
+              <span class="font-medium text-white">${qa.title}</span>
+            </div>
+            <button onclick="NexusApp.quickActions.remove(${qa.id})" class="text-slate-500 hover:text-rose-400 p-1">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        `).join('');
+        lucide.createIcons();
+      },
+
+      renderHabits() {
+        const container = document.getElementById('habitsListContainer');
+        if (AppState.habitsList.length === 0) {
+          container.innerHTML = `<p class="text-xs text-slate-500 py-6 text-center">Nenhum hábito cadastrado. Clique em "Novo Hábito" para começar.</p>`;
+          return;
+        }
+
+        container.innerHTML = AppState.habitsList.map(h => {
+          const pct = Math.min(100, Math.round((h.todayValue / (h.dailyGoal || 1)) * 100));
+          const hist = h.history || [0, 0, 0, 0, 0, 0, h.todayValue];
+          const maxVal = Math.max(h.dailyGoal, ...hist, 1);
+
+          const barsSvg = hist.map((val, idx) => {
+            const hPct = Math.min(100, Math.round((val / maxVal) * 100));
+            const isToday = idx === hist.length - 1;
+            const barFill = isToday ? '#10b981' : (val >= h.dailyGoal ? '#065f46' : '#334155');
+            const x = idx * 14 + 2;
+            const barHeight = Math.max(4, Math.round((hPct / 100) * 32));
+            const y = 36 - barHeight;
+            return `<rect x="${x}" y="${y}" width="10" height="${barHeight}" rx="2" fill="${barFill}" />`;
+          }).join('');
+
+          return `
+            <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3">
+              <div class="flex justify-between items-start">
+                <div>
+                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${h.type === 'reduction' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'}">
+                    ${h.type === 'reduction' ? 'Substituição / Troca de Impulso' : 'Hábito Positivo'}
+                  </span>
+                  <h3 class="text-sm font-bold text-white mt-1.5">${h.name}</h3>
+                  <p class="text-xs text-slate-400">Meta: <b class="text-slate-200">${h.dailyGoal} ${h.unit}/dia</b></p>
+                </div>
+                <button onclick="NexusApp.habits.remove(${h.id})" class="text-slate-500 hover:text-rose-400 p-1">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+
+              <div class="bg-surface-200/60 rounded-xl p-3 border border-surface-border flex items-center justify-between gap-4">
+                <div class="flex-1">
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="font-medium text-slate-300">Hoje: <b class="text-white">${h.todayValue}</b> / ${h.dailyGoal} ${h.unit}</span>
+                    <span class="font-bold ${pct >= 100 ? 'text-emerald-400' : 'text-cyan-400'}">${pct}%</span>
+                  </div>
+                  <div class="w-full bg-surface-300 h-2 rounded-full overflow-hidden">
+                    <div class="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                  </div>
+                </div>
+
+                <div class="text-right">
+                  <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider block mb-1">Últimos 7 Dias</span>
+                  <svg width="102" height="38" class="overflow-visible">
+                    ${barsSvg}
+                  </svg>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 pt-1">
+                <button onclick="NexusApp.habits.increment(${h.id}, 1)" class="tap-scale flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-cyan-600/20">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  <span>+1 ${h.unit}</span>
+                </button>
+                <button onclick="NexusApp.habits.increment(${h.id}, -1)" class="tap-scale py-2.5 px-3 rounded-xl bg-surface-200 hover:bg-surface-300 text-slate-300 font-semibold text-xs">
+                  -1
+                </button>
+                ${h.type === 'reduction' ? `
+                  <button onclick="NexusApp.openSlideOverDeslize()" title="Registrar Gatilho" class="tap-scale py-2.5 px-3 rounded-xl bg-rose-950/30 border border-rose-800/40 text-rose-300 font-semibold text-xs flex items-center gap-1">
+                    <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-rose-400"></i>
+                    <span>Deslize</span>
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        lucide.createIcons();
+      },
+
+      renderSavings() {
+        const bal = AppState.savings.balance || 0;
+        const goal = AppState.savings.goal || 1;
+        const pct = Math.min(100, Math.round((bal / goal) * 100));
+
+        document.getElementById('savingsGoalDisplay').textContent = `R$ ${goal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+        document.getElementById('savingsBalanceDisplay').textContent = `R$ ${bal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+        document.getElementById('savingsProgressBar').style.width = `${pct}%`;
+        document.getElementById('savingsProgressText').textContent = `${pct}% concluído (Faltam R$ ${Math.max(0, goal - bal).toLocaleString('pt-BR')})`;
+
+        const histList = document.getElementById('savingsHistoryList');
+        if (AppState.savings.history.length === 0) {
+          histList.innerHTML = `<p class="text-[11px] text-slate-500 py-2 text-center">Nenhuma movimentação registrada.</p>`;
+          return;
+        }
+
+        histList.innerHTML = AppState.savings.history.map(item => `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-surface-200/50 text-xs">
+            <div>
+              <span class="font-medium text-slate-200">${item.desc}</span>
+              <span class="text-[10px] text-slate-400 ml-2">${item.date}</span>
+            </div>
+            <span class="font-bold ${item.type === 'deposit' ? 'text-emerald-400' : 'text-rose-400'}">
+              ${item.type === 'deposit' ? '+' : '-'} R$ ${item.amount.toFixed(2)}
+            </span>
+          </div>
+        `).join('');
+      },
+
+      renderChecklists() {
+        const container = document.getElementById('checklistsContainer');
+        if (!container) return;
+        const total = AppState.checklists.length;
+        const doneCount = AppState.checklists.filter(c => c.done).length;
+        const pct = total === 0 ? 0 : Math.round((doneCount / total) * 100);
+
+        const txtEl = document.getElementById('checklistProgressText');
+        const barEl = document.getElementById('checklistProgressBar');
+        if (txtEl) txtEl.textContent = `${pct}% (${doneCount}/${total})`;
+        if (barEl) barEl.style.width = `${pct}%`;
+
+        if (total === 0) {
+          container.innerHTML = `<p class="text-xs text-slate-500 py-4 text-center">Nenhum procedimento configurado.</p>`;
+          return;
+        }
+
+        container.innerHTML = AppState.checklists.map(item => `
+          <div class="tap-scale flex items-center justify-between p-3 rounded-xl bg-surface-100 border border-surface-border hover:bg-surface-200/60 transition-all ${item.done ? 'opacity-70' : ''}">
+            <div class="flex items-center gap-3 flex-1 cursor-pointer" onclick="NexusApp.checklists.toggleItem(${item.id})">
+              <div class="w-5 h-5 rounded-lg border flex items-center justify-center transition-colors ${item.done ? 'bg-emerald-500 border-emerald-400 text-white' : 'border-slate-500 bg-surface-200'}">
+                ${item.done ? '<i data-lucide="check" class="w-3.5 h-3.5"></i>' : ''}
+              </div>
+              <span class="text-xs font-medium ${item.done ? 'line-through text-slate-400' : 'text-slate-200'}">${item.title}</span>
+            </div>
+            <button onclick="NexusApp.checklists.removeItem(${item.id})" class="text-slate-500 hover:text-rose-400 p-1.5 ml-2">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        `).join('');
+
+        lucide.createIcons();
+      },
+
+      renderCourses() {
+        const container = document.getElementById('coursesListContainer');
+        if (!container) return;
+        if (AppState.courses.length === 0) {
+          container.innerHTML = `<p class="text-xs text-slate-500 py-6 text-center">Nenhum curso cadastrado ainda. Clique em "Novo Curso".</p>`;
+          return;
+        }
+
+        container.innerHTML = AppState.courses.map(course => {
+          const pct = Math.round((course.completedLessons / course.totalLessons) * 100) || 0;
+          const isDone = course.completedLessons >= course.totalLessons;
+
+          return `
+            <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3">
+              <div class="flex justify-between items-start">
+                <div>
+                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${isDone ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'}">
+                    ${isDone ? 'Concluído' : course.platform}
+                  </span>
+                  <h3 class="text-sm font-bold text-white mt-1.5">${course.title}</h3>
+                </div>
+                <button onclick="NexusApp.courses.removeCourse(${course.id})" class="text-slate-500 hover:text-rose-400 p-1">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs text-slate-300 font-medium mb-1">
+                  <span>${course.completedLessons} de ${course.totalLessons} aulas</span>
+                  <span>${pct}%</span>
+                </div>
+                <div class="w-full bg-surface-200 h-2 rounded-full overflow-hidden">
+                  <div class="bg-gradient-to-r from-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 pt-1">
+                <button onclick="NexusApp.courses.changeProgress(${course.id}, 1)" class="tap-scale flex-1 py-2 px-3 rounded-xl bg-indigo-950/40 border border-indigo-800/40 text-indigo-300 font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-indigo-900/40">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  <span>Assistir Aula (+1)</span>
+                </button>
+                <button onclick="NexusApp.courses.changeProgress(${course.id}, -1)" class="tap-scale py-2 px-3 rounded-xl bg-surface-200 text-slate-300 font-semibold text-xs hover:bg-surface-300">
+                  -1
+                </button>
+              </div>
+
+              <div class="pt-1">
+                <label class="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Lembretes & Notas do Curso</label>
+                <textarea onchange="NexusApp.courses.updateNotes(${course.id}, this.value)" rows="2" placeholder="Ex: Anotações sobre a matéria..." class="w-full bg-surface-200/80 border border-surface-border rounded-xl p-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none">${course.notes || ''}</textarea>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        lucide.createIcons();
+      },
+
+      renderTrips() {
+        const select = document.getElementById('activeTripSelector');
+        const detailsContainer = document.getElementById('selectedTripDetails');
+        if (!select || !detailsContainer) return;
+
+        if (AppState.trips.items.length === 0) {
+          select.innerHTML = `<option value="">Nenhuma viagem cadastrada</option>`;
+          detailsContainer.innerHTML = `<p class="text-xs text-slate-500 py-6 text-center">Nenhuma viagem disponível. Clique em "Nova Viagem" acima.</p>`;
+          return;
+        }
+
+        select.innerHTML = AppState.trips.items.map(t => `
+          <option value="${t.id}" ${t.id === AppState.trips.activeTripId ? 'selected' : ''}>${t.destination} (${t.dates})</option>
+        `).join('');
+
+        let currentTrip = AppState.trips.items.find(t => t.id === AppState.trips.activeTripId);
+        if (!currentTrip) {
+          currentTrip = AppState.trips.items[0];
+          AppState.trips.activeTripId = currentTrip.id;
+        }
+
+        const totalExpenses = currentTrip.expenses.reduce((acc, curr) => acc + curr.amount, 0);
+        const participantCount = currentTrip.participants.length || 1;
+        const perPersonShare = totalExpenses / participantCount;
+
+        const paidMap = {};
+        currentTrip.participants.forEach(p => paidMap[p] = 0);
+        currentTrip.expenses.forEach(e => {
+          paidMap[e.payer] = (paidMap[e.payer] || 0) + e.amount;
+        });
+
+        // Filtragem de despesas por categoria e texto de busca
+        const currentCat = AppState.tripFilter?.category || 'all';
+        const currentSearch = AppState.tripFilter?.search || '';
+
+        const filteredExpenses = currentTrip.expenses.filter(e => {
+          const matchCat = currentCat === 'all' || (e.category || 'Geral') === currentCat;
+          const matchSearch = !currentSearch || e.desc.toLowerCase().includes(currentSearch) || e.payer.toLowerCase().includes(currentSearch);
+          return matchCat && matchSearch;
+        });
+
+        detailsContainer.innerHTML = `
+          <!-- CARD DE RATEIO AUTOMÁTICO -->
+          <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-[10px] uppercase font-bold text-amber-400 tracking-wider">Rateio Automático</span>
+                <h3 class="text-base font-bold text-white mt-0.5">${currentTrip.destination}</h3>
+                <p class="text-xs text-slate-400">${currentTrip.dates} • ${participantCount} viajantes</p>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-slate-400 block">Total Gasto:</span>
+                <span class="text-lg font-bold text-amber-400">R$ ${totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+
+            <div class="bg-surface-200/50 rounded-xl p-3 border border-surface-border space-y-2">
+              <div class="flex justify-between text-[11px] font-semibold text-slate-400 border-b border-surface-border pb-1">
+                <span>Participante</span>
+                <span>Pagou</span>
+                <span>Balanço (R$ ${(perPersonShare).toFixed(2)}/cada)</span>
+              </div>
+              ${currentTrip.participants.map(p => {
+                const paid = paidMap[p] || 0;
+                const balance = paid - perPersonShare;
+                const isPositive = balance >= 0;
+                return `
+                  <div class="flex justify-between items-center text-xs">
+                    <span class="font-medium text-slate-200">${p}</span>
+                    <span class="text-slate-400">R$ ${paid.toFixed(2)}</span>
+                    <span class="font-bold ${isPositive ? 'text-emerald-400' : 'text-rose-400'}">
+                      ${isPositive ? `+ Recebe R$ ${balance.toFixed(2)}` : `- Deve R$ ${Math.abs(balance).toFixed(2)}`}
+                    </span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- REGISTRO DE DESPESA CATEGORIZADA -->
+          <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3">
+            <h4 class="text-xs font-bold text-white uppercase tracking-wider">Computar Novo Gasto</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <input id="tripExpDesc" type="text" placeholder="Descrição (ex: Jantar)" class="col-span-2 sm:col-span-1 bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+              <input id="tripExpAmount" type="number" step="0.01" placeholder="Valor (R$)" class="bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white font-semibold">
+              <select id="tripExpCat" class="bg-surface-200 border border-surface-border rounded-xl px-2 py-2 text-xs text-white">
+                <option value="Alimentação">🍽️ Alimentação</option>
+                <option value="Transporte">🚗 Transporte</option>
+                <option value="Hospedagem">🏨 Hospedagem</option>
+                <option value="Passeios">🎟️ Passeios</option>
+                <option value="Outros">📦 Outros</option>
+              </select>
+              <select id="tripExpPayer" class="bg-surface-200 border border-surface-border rounded-xl px-2 py-2 text-xs text-white">
+                ${currentTrip.participants.map(p => `<option value="${p}">Pago: ${p}</option>`).join('')}
+              </select>
+            </div>
+            <button onclick="NexusApp.trips.addExpense()" class="tap-scale w-full py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold">
+              Adicionar ao Rateio
+            </button>
+
+            <!-- FILTRO E BUSCA RÁPIDA NAS DESPESAS -->
+            <div class="pt-2 border-t border-surface-border space-y-2">
+              <div class="flex flex-col sm:flex-row gap-2 items-center justify-between">
+                <div class="relative w-full sm:w-1/2">
+                  <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5"></i>
+                  <input type="text" oninput="NexusApp.trips.setSearch(this.value)" value="${currentSearch}" placeholder="Buscar gasto ou participante..." class="w-full bg-surface-200 border border-surface-border rounded-xl pl-8 pr-3 py-1.5 text-xs text-white">
+                </div>
+                <div class="flex gap-1 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 hide-scrollbar">
+                  ${['all', 'Alimentação', 'Transporte', 'Hospedagem', 'Passeios'].map(c => `
+                    <button onclick="NexusApp.trips.setFilterCategory('${c}')" class="px-2 py-1 rounded-lg text-[10px] font-semibold whitespace-nowrap transition-colors ${currentCat === c ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-surface-200 text-slate-400 hover:text-white'}">
+                      ${c === 'all' ? 'Todos' : c}
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
+
+              <!-- LISTA DE GASTOS FILTRADA -->
+              <div class="space-y-1.5 pt-1">
+                ${filteredExpenses.length === 0 ? '<p class="text-[11px] text-slate-500 text-center py-2">Nenhum gasto correspondente ao filtro.</p>' : ''}
+                ${filteredExpenses.map(e => `
+                  <div class="flex items-center justify-between p-2 rounded-xl bg-surface-200/40 text-xs">
+                    <div>
+                      <div class="flex items-center gap-1.5">
+                        <span class="font-medium text-slate-200">${e.desc}</span>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded bg-surface-300 text-slate-400">${e.category || 'Geral'}</span>
+                      </div>
+                      <span class="text-[10px] text-slate-400">(Pago por ${e.payer})</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-amber-400">R$ ${e.amount.toFixed(2)}</span>
+                      <button onclick="NexusApp.trips.removeExpense(${e.id})" class="text-slate-500 hover:text-rose-400">
+                        <i data-lucide="trash" class="w-3.5 h-3.5"></i>
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- ITINERÁRIO -->
+          <div class="bg-surface-100 border border-surface-border rounded-2xl p-4 space-y-3">
+            <h4 class="text-xs font-bold text-white uppercase tracking-wider">Itinerário & Atividades</h4>
+
+            <div class="flex gap-2">
+              <input id="tripItineraryTime" type="text" placeholder="Ex: Dia 1 - 10:00" class="w-1/3 bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+              <input id="tripItineraryAct" type="text" placeholder="Atividade planejada..." class="flex-1 bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white">
+              <button onclick="NexusApp.trips.addItineraryItem()" class="tap-scale px-3 py-2 bg-brand-600 text-white rounded-xl text-xs font-semibold">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <div class="space-y-2 pt-1">
+              ${currentTrip.itinerary.length === 0 ? '<p class="text-xs text-slate-500 text-center py-2">Nenhum evento agendado.</p>' : ''}
+              ${currentTrip.itinerary.map(i => `
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-surface-200/50 border border-surface-border ${i.done ? 'opacity-60' : ''}">
+                  <div class="flex items-center gap-2.5 cursor-pointer flex-1" onclick="NexusApp.trips.toggleItinerary(${i.id})">
+                    <div class="w-4 h-4 rounded border flex items-center justify-center ${i.done ? 'bg-emerald-500 border-emerald-400 text-white' : 'border-slate-500 bg-surface-200'}">
+                      ${i.done ? '<i data-lucide="check" class="w-3.5 h-3.5"></i>' : ''}
+                    </div>
+                    <div>
+                      <span class="text-[10px] font-semibold text-amber-300 block">${i.time}</span>
+                      <span class="text-xs text-slate-200 ${i.done ? 'line-through text-slate-400' : ''}">${i.activity}</span>
+                    </div>
+                  </div>
+                  <button onclick="NexusApp.trips.removeItinerary(${i.id})" class="text-slate-500 hover:text-rose-400 p-1">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+
+        lucide.createIcons();
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      NexusApp.init();
+    });
+  </script>
+</body>
+</html>
